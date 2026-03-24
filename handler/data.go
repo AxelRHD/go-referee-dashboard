@@ -162,8 +162,15 @@ func (dh *DataHandler) processImport(w http.ResponseWriter, r *http.Request, tex
 			view.SetFlash(w, "Keine gültigen SQL-Statements gefunden.")
 		}
 	} else {
-		// CSV import not yet implemented
-		view.SetFlash(w, "CSV-Import wird noch implementiert.")
+		count, csvErrors := dh.importCSV(r.Context(), text, entity)
+		for _, e := range csvErrors {
+			view.SetFlash(w, e)
+		}
+		if count > 0 {
+			view.SetFlash(w, fmt.Sprintf("%d Datensatz/Datensätze importiert.", count))
+		} else if len(csvErrors) == 0 {
+			view.SetFlash(w, "Keine Daten zum Importieren gefunden.")
+		}
 	}
 
 	http.Redirect(w, r, "/data", http.StatusSeeOther)

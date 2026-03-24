@@ -42,8 +42,20 @@ func NewServer(cfg config.Config) http.Handler {
 	leagues := handler.NewLeagueHandler(queries)
 	leagues.Routes(r)
 
+	teams := handler.NewTeamHandler(queries)
+	teams.Routes(r)
+
+	venues := handler.NewVenueHandler(queries)
+	venues.Routes(r)
+
+	games := handler.NewGameHandler(queries)
+	games.Routes(r)
+
 	r.Route("/api", func(r chi.Router) {
 		leagues.APIRoutes(r)
+		teams.APIRoutes(r)
+		venues.APIRoutes(r)
+		games.APIRoutes(r)
 	})
 
 	return r

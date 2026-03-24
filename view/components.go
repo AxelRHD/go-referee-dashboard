@@ -55,7 +55,7 @@ func NumberInput(name, value string, required bool, errMsg string) g.Node {
 		g.Attr("name", name),
 		g.Attr("id", name),
 		g.Attr("value", value),
-		g.Attr("step", "1"),
+		g.Attr("step", "any"),
 	}
 	if required {
 		attrs = append(attrs, g.Attr("required", ""))
@@ -83,7 +83,7 @@ func SubmitButton(label, cancelURL string) g.Node {
 	}
 	if cancelURL != "" {
 		nodes = append(nodes,
-			h.A(h.Class("btn btn-outline-secondary ms-2"), g.Attr("href", cancelURL), g.Text("Abbrechen")),
+			h.A(h.Class("btn btn-outline-danger ms-2"), g.Attr("href", cancelURL), g.Text("Abbrechen")),
 		)
 	}
 	return h.Div(h.Class("mt-3"), g.Group(nodes))
@@ -92,7 +92,7 @@ func SubmitButton(label, cancelURL string) g.Node {
 func DataTable(headers []string, rows []g.Node) g.Node {
 	var ths []g.Node
 	for _, hdr := range headers {
-		ths = append(ths, h.Th(g.Text(hdr)))
+		ths = append(ths, h.Th(h.Class("text-nowrap"), g.Text(hdr)))
 	}
 	return h.Div(h.Class("table-responsive"),
 		h.Table(h.Class("table table-striped table-hover table-sm"),
@@ -105,7 +105,7 @@ func DataTable(headers []string, rows []g.Node) g.Node {
 func ActionLinks(editURL, deleteURL string) g.Node {
 	return h.Td(
 		h.A(h.Class("btn btn-sm btn-outline-primary me-1"), g.Attr("href", editURL),
-			h.I(h.Class("bi bi-pencil")),
+			g.Text("Bearbeiten"),
 		),
 		DeleteButton(deleteURL),
 	)
@@ -116,9 +116,9 @@ func DeleteButton(url string) g.Node {
 		h.Class("d-inline"),
 		g.Attr("method", "post"),
 		g.Attr("action", url),
-		g.Attr("onsubmit", "return confirm('Wirklich löschen?')"),
+		g.Attr("@submit.prevent", "if(confirm('Wirklich löschen?')) $el.submit()"),
 		h.Button(h.Class("btn btn-sm btn-outline-danger"), g.Attr("type", "submit"),
-			h.I(h.Class("bi bi-trash")),
+			g.Text("Löschen"),
 		),
 	)
 }

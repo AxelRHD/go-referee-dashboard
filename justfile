@@ -11,10 +11,10 @@ default:
 # Development
 # ============================================================
 
-# Start dev server
+# Start dev server with hot-reload
 [group('dev')]
 dev:
-    @go run ./cmd serve
+    @air
 
 # Format code
 [group('dev')]

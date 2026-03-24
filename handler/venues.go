@@ -256,7 +256,7 @@ func (vh *VenueHandler) ExportSQL(w http.ResponseWriter, r *http.Request) {
 func photonGeocode(client *http.Client, query string) (float64, float64, error) {
 	req, _ := http.NewRequest("GET", "https://photon.komoot.io/api/", nil)
 	q := req.URL.Query()
-	q.Set("q", query)
+	q.Set("q", query+" Deutschland")
 	q.Set("limit", "1")
 	q.Set("lang", "de")
 	req.URL.RawQuery = q.Encode()

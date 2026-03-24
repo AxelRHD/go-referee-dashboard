@@ -306,6 +306,12 @@ func DashboardPage(seasons []string, defaultSeason string) g.Node {
 				h.Div(h.Class("col-md-4"), widgetCard("Fahrtkosten", "chart-fee-travel")),
 			),
 		),
+		collapsibleSection("map-body", "bi bi-geo-alt-fill", "Spielorte",
+			h.Div(h.Class("row g-3"),
+				h.Div(h.Class("col-md-4"), widgetCard("Top 10 Spielorte", "chart-venues-top")),
+				h.Div(h.Class("col-md-8"), widgetCard("Einsatzorte", "chart-map")),
+			),
+		),
 	)
 
 	// --- Overview charts ---
@@ -330,6 +336,12 @@ func DashboardPage(seasons []string, defaultSeason string) g.Node {
 		collapsibleSection("overview-flow-body", "bi bi-diagram-3", "Verteilung",
 			h.Div(h.Class("row g-3"),
 				h.Div(h.Class("col-12"), widgetCard("Positionen pro Jahr", "chart-overview-sankey")),
+			),
+		),
+		collapsibleSection("overview-map-body", "bi bi-geo-alt-fill", "Spielorte",
+			h.Div(h.Class("row g-3"),
+				h.Div(h.Class("col-md-4"), widgetCard("Top 10 Spielorte", "chart-overview-venues-top")),
+				h.Div(h.Class("col-md-8"), widgetCard("Einsatzorte", "chart-overview-map")),
 			),
 		),
 	)
@@ -607,6 +619,8 @@ document.addEventListener('alpine:init', () => {
             this.renderFeeBar('chart-fee-total', g => g.fee + g.travel);
             this.renderFeeBar('chart-fee-base', g => g.fee);
             this.renderFeeBar('chart-fee-travel', g => g.travel);
+            this.renderVenueTop('chart-venues-top', this.filtered);
+            this.renderMap('chart-map', this.filtered);
         },
 
         fmtDate(d) {
@@ -810,6 +824,8 @@ document.addEventListener('alpine:init', () => {
             this.renderOverviewKmPerYear();
             this.renderOverviewSankey();
             this.renderOverviewLeagues();
+            this.renderVenueTop('chart-overview-venues-top', this.overviewFiltered);
+            this.renderMap('chart-overview-map', this.overviewFiltered);
         },
 
         renderOverviewGamesPerYear() {
@@ -1126,6 +1142,88 @@ document.addEventListener('alpine:init', () => {
                     monthLabels, totalArr, true, fmtEur
                 ),
             }), {responsive: true, displayModeBar: false});
+        },
+
+        renderVenueTop(chartId, games) {
+            var colors = ['#5E81AC','#81A1C1','#88C0D0','#8FBCBB','#A3BE8C','#EBCB8B','#D08770','#BF616A','#B48EAD'];
+            var counts = {};
+            games.forEach(g => {
+                // Extract city from venue (format: "Stadium, City" or just "City")
+                var venue = g.venue || '';
+                if (!venue) return;
+                var parts = venue.split(', ');
+                var city = parts.length > 1 ? parts[parts.length - 1] : parts[0];
+                counts[city] = (counts[city] || 0) + 1;
+            });
+            var sorted = Object.entries(counts)
+                .sort((a, b) => a[1] - b[1]);
+            var top = sorted.slice(-10);
+            var labels = top.map(e => e[0]);
+            var values = top.map(e => e[1]);
+
+            Plotly.newPlot(chartId, [{
+                x: values, y: labels, type: 'bar', orientation: 'h',
+                marker: {color: labels.map((_, i) => colors[i %% colors.length])},
+                text: values, textposition: 'auto',
+            }], this.baseLayout(500, {
+                yaxis: {
+                    gridcolor: this.baseLayout(0).yaxis.gridcolor,
+                    categoryorder: 'array', categoryarray: labels,
+                    ticksuffix: '  ',
+                },
+                margin: {t: 10, b: 30, l: 120, r: 10},
+            }), {responsive: true, displayModeBar: false});
+        },
+
+        renderMap(chartId, games) {
+            var dark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+            // Aggregate games by venue (lat/lon)
+            var venues = {};
+            games.forEach(g => {
+                if (!g.venue_lat || !g.venue_lon || (g.venue_lat === 0 && g.venue_lon === 0)) return;
+                var key = g.venue_lat.toFixed(4) + ',' + g.venue_lon.toFixed(4);
+                if (!venues[key]) {
+                    venues[key] = {lat: g.venue_lat, lon: g.venue_lon, name: g.venue || '', count: 0};
+                }
+                venues[key].count++;
+            });
+            var entries = Object.values(venues);
+            if (!entries.length) return;
+
+            var maxCount = Math.max(...entries.map(e => e.count));
+            var trace = {
+                type: 'scattermapbox',
+                lat: entries.map(e => e.lat),
+                lon: entries.map(e => e.lon),
+                text: entries.map(e => e.name + ' (' + e.count + ')'),
+                marker: {
+                    size: entries.map(e => Math.max(8, Math.sqrt(e.count / maxCount) * 40)),
+                    color: '#5E81AC',
+                    opacity: 0.7,
+                },
+                hoverinfo: 'text',
+            };
+
+            var lats = entries.map(e => e.lat);
+            var lons = entries.map(e => e.lon);
+            var cLat = (Math.min(...lats) + Math.max(...lats)) / 2;
+            var cLon = (Math.min(...lons) + Math.max(...lons)) / 2;
+            var latSpan = Math.max(...lats) - Math.min(...lats) || 1;
+            var lonSpan = Math.max(...lons) - Math.min(...lons) || 1;
+            var span = Math.max(latSpan, lonSpan);
+            // zoom: ~6 for Germany-wide, ~8 for regional, ~10 for local
+            var zoom = Math.round(Math.log2(180 / span));
+
+            Plotly.newPlot(chartId, [trace], {
+                mapbox: {
+                    style: dark ? 'carto-darkmatter' : 'open-street-map',
+                    center: {lat: cLat, lon: cLon},
+                    zoom: zoom,
+                },
+                height: 500,
+                margin: {t: 0, b: 0, l: 0, r: 0},
+                paper_bgcolor: 'rgba(0,0,0,0)',
+            }, {responsive: true, displayModeBar: false, scrollZoom: true});
         },
     }));
 });

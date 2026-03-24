@@ -112,6 +112,7 @@ func VenueForm(venue *model.Venue, errors map[string]string, data map[string]str
 				if (data.error) { alert(data.error); return; }
 				this.lat = data.lat;
 				this.lon = data.lon;
+				if (data.message) { alert(data.message); }
 			} catch(e) { alert('Geocoding-Fehler: ' + e); }
 		}
 	}`, val("city"), val("stadium"), latVal, lonVal)

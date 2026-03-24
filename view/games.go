@@ -81,17 +81,7 @@ func GameList(w http.ResponseWriter, r *http.Request, games []model.ListGamesRow
 }
 
 func filterBar(f GameFilters, opts FilterOptions) g.Node {
-	htmxAttrs := func() []g.Node {
-		return []g.Node{
-			g.Attr("hx-get", "/games"),
-			g.Attr("hx-target", "#games-content"),
-			g.Attr("hx-push-url", "true"),
-			g.Attr("hx-trigger", "change"),
-			g.Attr("hx-include", "[name='season'],[name='month'],[name='league_id'],[name='position'],[name='q']"),
-		}
-	}
-
-	seasonOpts := []g.Node{h.Option(g.Attr("value", ""), g.Text("Alle Saisons"))}
+	seasonOpts := []g.Node{h.Option(g.Attr("value", ""), g.Text("Alle"))}
 	for _, s := range opts.Seasons {
 		attrs := []g.Node{g.Attr("value", s)}
 		if s == f.Season {
@@ -100,7 +90,7 @@ func filterBar(f GameFilters, opts FilterOptions) g.Node {
 		seasonOpts = append(seasonOpts, h.Option(append(attrs, g.Text(s))...))
 	}
 
-	monthOpts := []g.Node{h.Option(g.Attr("value", ""), g.Text("Alle Monate"))}
+	monthOpts := []g.Node{h.Option(g.Attr("value", ""), g.Text("Alle"))}
 	for _, m := range opts.Months {
 		attrs := []g.Node{g.Attr("value", m.Value)}
 		if m.Value == f.Month {
@@ -109,7 +99,7 @@ func filterBar(f GameFilters, opts FilterOptions) g.Node {
 		monthOpts = append(monthOpts, h.Option(append(attrs, g.Text(m.Label))...))
 	}
 
-	leagueOpts := []g.Node{h.Option(g.Attr("value", ""), g.Text("Alle Ligen"))}
+	leagueOpts := []g.Node{h.Option(g.Attr("value", ""), g.Text("Alle"))}
 	for _, l := range opts.Leagues {
 		attrs := []g.Node{g.Attr("value", fmt.Sprintf("%d", l.ID))}
 		if fmt.Sprintf("%d", l.ID) == f.LeagueID {
@@ -118,7 +108,7 @@ func filterBar(f GameFilters, opts FilterOptions) g.Node {
 		leagueOpts = append(leagueOpts, h.Option(append(attrs, g.Text(l.Name))...))
 	}
 
-	posOpts := []g.Node{h.Option(g.Attr("value", ""), g.Text("Alle Positionen"))}
+	posOpts := []g.Node{h.Option(g.Attr("value", ""), g.Text("Alle"))}
 	for _, p := range opts.Positions {
 		attrs := []g.Node{g.Attr("value", p.Position)}
 		if p.Position == f.Position {
@@ -127,33 +117,44 @@ func filterBar(f GameFilters, opts FilterOptions) g.Node {
 		posOpts = append(posOpts, h.Option(append(attrs, g.Text(p.Position))...))
 	}
 
-	selectNode := func(name string, opts []g.Node) g.Node {
-		attrs := append(htmxAttrs(), h.Class("form-select form-select-sm"), g.Attr("name", name))
-		attrs = append(attrs, g.Group(opts))
-		return h.Select(attrs...)
+	filterSelect := func(name string, opts []g.Node) g.Node {
+		return h.Select(h.Class("form-select form-select-sm"), g.Attr("name", name), g.Group(opts))
 	}
 
-	return h.Div(h.Class("row g-2 mb-3"),
-		h.Div(h.Class("col"), selectNode("season", seasonOpts)),
-		h.Div(h.Class("col"), selectNode("month", monthOpts)),
-		h.Div(h.Class("col"), selectNode("league_id", leagueOpts)),
-		h.Div(h.Class("col"), selectNode("position", posOpts)),
-		h.Div(h.Class("col"),
-			h.Input(
-				h.Class("form-control form-control-sm"),
-				g.Attr("type", "text"),
-				g.Attr("name", "q"),
-				g.Attr("placeholder", "Suche..."),
-				g.Attr("value", f.Query),
-				g.Attr("hx-get", "/games"),
-				g.Attr("hx-target", "#games-content"),
-				g.Attr("hx-push-url", "true"),
-				g.Attr("hx-trigger", "input changed delay:400ms"),
-				g.Attr("hx-include", "[name='season'],[name='month'],[name='league_id'],[name='position'],[name='q']"),
+	filterCol := func(label, name string, opts []g.Node) g.Node {
+		return h.Div(h.Class("col-auto"),
+			h.Small(h.Class("text-muted"), g.Text(label)),
+			filterSelect(name, opts),
+		)
+	}
+
+	return h.FormEl(h.Class("mb-3"), g.Attr("method", "get"), g.Attr("action", "/games"),
+		g.Attr("hx-get", "/games"),
+		g.Attr("hx-target", "#games-content"),
+		g.Attr("hx-trigger", "change"),
+		g.Attr("hx-push-url", "true"),
+		h.Div(h.Class("row g-2 align-items-end"),
+			filterCol("Saison", "season", seasonOpts),
+			filterCol("Monat", "month", monthOpts),
+			filterCol("Liga", "league_id", leagueOpts),
+			filterCol("Position", "position", posOpts),
+			h.Div(h.Class("col"),
+				h.Small(h.Class("text-muted"), g.Text("Suche")),
+				h.Input(
+					h.Class("form-control form-control-sm"),
+					g.Attr("type", "text"),
+					g.Attr("name", "q"),
+					g.Attr("placeholder", "Team, Spielort, Bemerkung..."),
+					g.Attr("value", f.Query),
+					g.Attr("hx-get", "/games"),
+					g.Attr("hx-target", "#games-content"),
+					g.Attr("hx-push-url", "true"),
+					g.Attr("hx-trigger", "input changed delay:400ms, search"),
+				),
 			),
-		),
-		h.Div(h.Class("col-auto"),
-			h.A(h.Class("btn btn-sm btn-outline-secondary"), g.Attr("href", "/games"), g.Text("Reset")),
+			h.Div(h.Class("col-auto"),
+				h.A(h.Class("btn btn-sm btn-outline-secondary"), g.Attr("href", "/games"), g.Text("Zurücksetzen")),
+			),
 		),
 	)
 }
@@ -215,15 +216,15 @@ func GameTable(games []model.ListGamesRow, stats GameStats, f GameFilters) g.Nod
 func statsRow(stats GameStats) g.Node {
 	totalAll := stats.TotalFee + stats.TotalTravel
 	return h.Div(h.Class("row g-2 mb-3"),
-		statCard("Spiele", fmt.Sprintf("%d", stats.Count)),
-		statCard("Vergütung", eurFormat(stats.TotalFee)),
-		statCard("Fahrtkosten", eurFormat(stats.TotalTravel)),
-		statCard("Gesamt", eurFormat(totalAll)),
-		statCard("Kilometer", fmt.Sprintf("%d", stats.TotalKm)),
+		gameStatCard("Spiele", fmt.Sprintf("%d", stats.Count)),
+		gameStatCard("Vergütung", eurFormat(stats.TotalFee)),
+		gameStatCard("Fahrtkosten", eurFormat(stats.TotalTravel)),
+		gameStatCard("Gesamt", eurFormat(totalAll)),
+		gameStatCard("Kilometer", fmt.Sprintf("%d", stats.TotalKm)),
 	)
 }
 
-func statCard(label, value string) g.Node {
+func gameStatCard(label, value string) g.Node {
 	return h.Div(h.Class("col"),
 		h.Div(h.Class("card"),
 			h.Div(h.Class("card-body p-2 text-center"),

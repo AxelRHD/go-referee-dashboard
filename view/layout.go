@@ -7,6 +7,21 @@ import (
 )
 
 func BasePage(pageTitle string, content ...g.Node) g.Node {
+	return basePage(pageTitle, "container", content...)
+}
+
+func BasePageRaw(pageTitle string, content ...g.Node) g.Node {
+	return basePage(pageTitle, "", content...)
+}
+
+func basePage(pageTitle, container string, content ...g.Node) g.Node {
+	var contentWrapper g.Node
+	if container != "" {
+		contentWrapper = h.Div(h.Class(container+" mt-4"), g.Group(content))
+	} else {
+		contentWrapper = h.Div(h.Class("mt-4"), g.Group(content))
+	}
+
 	return c.HTML5(c.HTML5Props{
 		Title:    pageTitle + " — Referee Dashboard",
 		Language: "de",
@@ -17,18 +32,14 @@ func BasePage(pageTitle string, content ...g.Node) g.Node {
 			h.Link(g.Attr("rel", "stylesheet"), g.Attr("href", "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css")),
 			h.Link(g.Attr("rel", "stylesheet"), g.Attr("href", "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css")),
 			h.Link(g.Attr("rel", "stylesheet"), g.Attr("href", "/static/css/nord.css")),
-			// Theme init before render to avoid flash
 			h.Script(g.Raw(`(function(){var t=localStorage.getItem('theme')||'dark';document.documentElement.setAttribute('data-bs-theme',t)})();`)),
 		},
 		Body: []g.Node{
 			navbar(),
-			h.Div(h.Class("container mt-4"),
-				g.Group(content),
-			),
+			contentWrapper,
 			h.Script(g.Attr("src", "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js")),
 			h.Script(g.Attr("src", "https://cdn.jsdelivr.net/npm/htmx.org@2/dist/htmx.min.js")),
 			h.Script(g.Attr("src", "https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2/plotly.min.js")),
-			// Alpine theme toggle must come before Alpine.js
 			h.Script(g.Raw(`
 document.addEventListener('alpine:init',()=>{
     Alpine.data('themeToggle',()=>({

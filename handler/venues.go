@@ -155,45 +155,34 @@ func (vh *VenueHandler) Geocode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	query := body.City + ", Germany"
-	if body.Stadium != "" {
-		query = body.Stadium + ", " + query
-	}
-
 	client := &http.Client{Timeout: 10 * time.Second}
-	req, _ := http.NewRequest("GET", "https://nominatim.openstreetmap.org/search", nil)
-	q := req.URL.Query()
-	q.Set("q", query)
-	q.Set("format", "json")
-	q.Set("limit", "1")
-	req.URL.RawQuery = q.Encode()
-	req.Header.Set("User-Agent", "RefereeApp/1.0")
 
-	resp, err := client.Do(req)
-	if err != nil {
-		jsonError(w, fmt.Sprintf("Geocoding-Fehler: %v", err), http.StatusInternalServerError)
-		return
+	// Try with stadium + city first, fall back to city only
+	type attempt struct {
+		query    string
+		fallback bool
 	}
-	defer resp.Body.Close()
+	attempts := []attempt{}
+	if body.Stadium != "" {
+		attempts = append(attempts, attempt{body.Stadium + " " + body.City, false})
+	}
+	attempts = append(attempts, attempt{body.City, body.Stadium != ""})
 
-	var results []struct {
-		Lat string `json:"lat"`
-		Lon string `json:"lon"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&results); err != nil {
-		jsonError(w, fmt.Sprintf("Geocoding-Fehler: %v", err), http.StatusInternalServerError)
-		return
-	}
-
-	if len(results) == 0 {
-		jsonError(w, "Keine Koordinaten gefunden.", http.StatusNotFound)
+	for _, a := range attempts {
+		lat, lon, err := photonGeocode(client, a.query)
+		if err != nil || lat == 0 {
+			continue
+		}
+		resp := map[string]any{"lat": lat, "lon": lon}
+		if a.fallback {
+			resp["fallback"] = true
+			resp["message"] = fmt.Sprintf("Stadion nicht gefunden, verwende Koordinaten für %s.", body.City)
+		}
+		jsonResponse(w, resp)
 		return
 	}
 
-	jsonResponse(w, map[string]string{
-		"lat": results[0].Lat,
-		"lon": results[0].Lon,
-	})
+	jsonError(w, "Keine Koordinaten gefunden.", http.StatusNotFound)
 }
 
 // JSON API
@@ -263,6 +252,37 @@ func (vh *VenueHandler) ExportSQL(w http.ResponseWriter, r *http.Request) {
 }
 
 // Helpers
+
+func photonGeocode(client *http.Client, query string) (float64, float64, error) {
+	req, _ := http.NewRequest("GET", "https://photon.komoot.io/api/", nil)
+	q := req.URL.Query()
+	q.Set("q", query)
+	q.Set("limit", "1")
+	q.Set("lang", "de")
+	req.URL.RawQuery = q.Encode()
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return 0, 0, err
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Features []struct {
+			Geometry struct {
+				Coordinates []float64 `json:"coordinates"`
+			} `json:"geometry"`
+		} `json:"features"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return 0, 0, err
+	}
+	if len(result.Features) == 0 || len(result.Features[0].Geometry.Coordinates) < 2 {
+		return 0, 0, nil
+	}
+	coords := result.Features[0].Geometry.Coordinates
+	return coords[1], coords[0], nil // Photon: [lon, lat]
+}
 
 func (vh *VenueHandler) getVenue(w http.ResponseWriter, r *http.Request) (model.Venue, error) {
 	id, err := parseID(r)

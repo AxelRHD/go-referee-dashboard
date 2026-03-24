@@ -8,7 +8,6 @@ RUN go build -ldflags "-X main.version=${VERSION}" -o referee-dashboard ./cmd
 
 FROM scratch
 COPY --from=builder /build/referee-dashboard /referee-dashboard
-COPY --from=builder /build/db/migrations /db/migrations
 COPY --from=builder /build/static /static
 EXPOSE 3000
 CMD ["/referee-dashboard", "serve"]

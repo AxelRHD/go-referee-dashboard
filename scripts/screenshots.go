@@ -22,7 +22,6 @@ func main() {
 		name string
 		url  string
 	}{
-		{"screenshot-dashboard", "/dashboard/"},
 		{"screenshot-games", "/games"},
 		{"screenshot-form-validation", "/games/new"},
 		{"screenshot-data", "/data"},
@@ -64,10 +63,29 @@ func main() {
 		fmt.Printf("  -> %s (%d KB)\n", path, len(buf)/1024)
 	}
 
+	// Dashboard: switch to 2025 season for a fuller screenshot
+	fmt.Println("Capturing screenshot-dashboard ...")
+	var dashBuf []byte
+	err := chromedp.Run(ctx,
+		chromedp.Navigate(baseURL+"/dashboard/"),
+		chromedp.Sleep(3*time.Second),
+		// Set season to 2025 via Alpine.js reactivity
+		chromedp.Evaluate(`Alpine.evaluate(document.querySelector('[x-data="dashboard"]'), 'season = "2025"')`, nil),
+		chromedp.Sleep(3*time.Second),
+		chromedp.FullScreenshot(&dashBuf, 90),
+	)
+	if err != nil {
+		log.Printf("Error capturing dashboard: %v", err)
+	} else {
+		path := "docs/screenshot-dashboard.png"
+		os.WriteFile(path, dashBuf, 0o644)
+		fmt.Printf("  -> %s (%d KB)\n", path, len(dashBuf)/1024)
+	}
+
 	// Overview: need to click the "Übersicht" button first
 	fmt.Println("Capturing screenshot-overview ...")
 	var buf []byte
-	err := chromedp.Run(ctx,
+	err = chromedp.Run(ctx,
 		chromedp.Navigate(baseURL+"/dashboard/"),
 		chromedp.Sleep(3*time.Second),
 		chromedp.Click(`button[class*="btn"]`, chromedp.ByQuery, chromedp.NodeVisible),

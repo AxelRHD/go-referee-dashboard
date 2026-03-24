@@ -15,29 +15,34 @@ import (
 // JS to redact sensitive financial data before screenshot
 const redactJS = `
 (function() {
-    // Blur all Plotly chart containers
-    document.querySelectorAll('.js-plotly-plot, [id^="chart-"]').forEach(el => {
-        el.style.filter = 'blur(6px)';
+    var colors = ['#5E81AC','#A3BE8C','#D08770','#88C0D0','#B48EAD','#EBCB8B','#BF616A','#81A1C1'];
+    var ci = 0;
+    function nextColor() { return colors[ci++ % colors.length]; }
+
+    function redactEl(el) {
+        var rect = el.getBoundingClientRect();
+        if (rect.width < 5 || rect.height < 5) return;
+        var overlay = document.createElement('div');
+        overlay.style.cssText = 'position:absolute;left:'+rect.left+'px;top:'+rect.top+'px;width:'+rect.width+'px;height:'+rect.height+'px;background:'+nextColor()+';border-radius:3px;z-index:9999;';
+        document.body.appendChild(overlay);
+    }
+
+    // Redact EUR amounts and financial numbers in table cells
+    document.querySelectorAll('td').forEach(el => {
+        if (/[\d.,]+\s*€/.test(el.textContent)) redactEl(el);
     });
 
-    // Replace EUR amounts, numbers in stat cards and table cells
-    document.querySelectorAll('.card-body .fw-bold, .card-body span[x-text], td.text-end').forEach(el => {
-        var text = el.textContent;
-        // Replace EUR amounts like "1.234,56 €" or "0,00 €"
-        text = text.replace(/[\d.,]+\s*€/g, '***,** €');
-        // Replace plain numbers like "2.247" or "34"
-        text = text.replace(/^[\d.,]+$/, '***');
-        // Replace ct/km values
-        text = text.replace(/[\d,]+\s*ct/g, '**,* ct');
-        el.textContent = text;
-    });
-
-    // Redact table rows (games list: fee columns)
-    document.querySelectorAll('table td').forEach(el => {
-        var text = el.textContent;
-        if (/[\d.,]+\s*€/.test(text)) {
-            el.textContent = text.replace(/[\d.,]+\s*€/g, '***,** €');
+    // Redact stat card values (fw-bold with numbers or EUR)
+    document.querySelectorAll('.fw-bold').forEach(el => {
+        var text = el.textContent.trim();
+        if (/[\d.,]+\s*€/.test(text) || /^\d[\d.,]*$/.test(text) || /[\d,]+\s*ct/.test(text)) {
+            redactEl(el);
         }
+    });
+
+    // Redact Vergütung chart containers (fee charts show EUR)
+    document.querySelectorAll('[id^="chart-fee"]').forEach(el => {
+        el.style.filter = 'blur(8px)';
     });
 })();
 `

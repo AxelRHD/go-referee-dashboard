@@ -1,11 +1,13 @@
 services:
   referee-dashboard:
-    build: .
-    image: referee-dashboard:latest
+    image: referee-dashboard
+    container_name: referee-dashboard
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "3001:3000"
     volumes:
-      - ./data:/data
+      - CHANGE_TO_COMPOSE_DATA_PATH/referee-dashboard:/data
     environment:
       - DB_PATH=/data/referee.db
+      - PORT=3000
+      - SECRET_KEY=${SECRET_KEY}

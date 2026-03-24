@@ -67,19 +67,24 @@ generate:
 remote := "mimir"
 appdata_dir := "/mnt/data/docker/appdata/referee-dashboard"
 
-# Build Docker image
+# Build Docker image with git version
 [group('deploy')]
 build-image:
-    docker build -t {{app_name}} .
+    docker build --build-arg VERSION={{version}} -t {{app_name}} .
 
 # Push image to server
 [group('deploy')]
 deploy-image:
     docker save {{app_name}} | ssh {{remote}} docker load
 
-# Full deploy: build + push image
+# Restart container on server
 [group('deploy')]
-deploy: build-image deploy-image
+deploy-restart:
+    gosctl run restart
+
+# Full deploy: build + push + restart
+[group('deploy')]
+deploy: build-image deploy-image deploy-restart
 
 # Show container logs
 [group('deploy')]

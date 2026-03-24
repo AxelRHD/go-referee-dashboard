@@ -145,34 +145,31 @@ func (dh *DataHandler) Paste(w http.ResponseWriter, r *http.Request) {
 }
 
 func (dh *DataHandler) processImport(w http.ResponseWriter, r *http.Request, text, format, entity string) {
+	var messages []string
+
 	if format == "sql" {
 		statements, parseErrors := sanitizeSQL(text)
-		for _, e := range parseErrors {
-			view.SetFlash(w, e)
-		}
+		messages = append(messages, parseErrors...)
 		if len(statements) > 0 {
 			count, execErrors := dh.executeSQL(statements)
-			for _, e := range execErrors {
-				view.SetFlash(w, e)
-			}
+			messages = append(messages, execErrors...)
 			if count > 0 {
-				view.SetFlash(w, fmt.Sprintf("%d SQL-Statement(s) erfolgreich ausgeführt.", count))
+				messages = append(messages, fmt.Sprintf("%d SQL-Statement(s) erfolgreich ausgeführt.", count))
 			}
 		} else if len(parseErrors) == 0 {
-			view.SetFlash(w, "Keine gültigen SQL-Statements gefunden.")
+			messages = append(messages, "Keine gültigen SQL-Statements gefunden.")
 		}
 	} else {
 		count, csvErrors := dh.importCSV(r.Context(), text, entity)
-		for _, e := range csvErrors {
-			view.SetFlash(w, e)
-		}
+		messages = append(messages, csvErrors...)
 		if count > 0 {
-			view.SetFlash(w, fmt.Sprintf("%d Datensatz/Datensätze importiert.", count))
+			messages = append(messages, fmt.Sprintf("%d Datensatz/Datensätze importiert.", count))
 		} else if len(csvErrors) == 0 {
-			view.SetFlash(w, "Keine Daten zum Importieren gefunden.")
+			messages = append(messages, "Keine Daten zum Importieren gefunden.")
 		}
 	}
 
+	view.SetFlashes(w, messages)
 	http.Redirect(w, r, "/data", http.StatusSeeOther)
 }
 

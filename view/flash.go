@@ -12,20 +12,10 @@ import (
 const flashCookieName = "flash"
 
 func SetFlash(w http.ResponseWriter, msg string) {
-	// Read existing messages from Set-Cookie headers
-	var messages []string
-	for _, c := range w.Header()["Set-Cookie"] {
-		if len(c) > len(flashCookieName)+1 && c[:len(flashCookieName)+1] == flashCookieName+"=" {
-			val := c[len(flashCookieName)+1:]
-			if idx := indexOf(val, ';'); idx >= 0 {
-				val = val[:idx]
-			}
-			decoded, _ := url.QueryUnescape(val)
-			_ = json.Unmarshal([]byte(decoded), &messages)
-			break
-		}
-	}
-	messages = append(messages, msg)
+	SetFlashes(w, []string{msg})
+}
+
+func SetFlashes(w http.ResponseWriter, messages []string) {
 	data, _ := json.Marshal(messages)
 	http.SetCookie(w, &http.Cookie{
 		Name:     flashCookieName,
@@ -41,7 +31,6 @@ func GetFlashes(w http.ResponseWriter, r *http.Request) []string {
 	if err != nil {
 		return nil
 	}
-	// Clear cookie
 	http.SetCookie(w, &http.Cookie{
 		Name:   flashCookieName,
 		Value:  "",
@@ -51,7 +40,6 @@ func GetFlashes(w http.ResponseWriter, r *http.Request) []string {
 	decoded, _ := url.QueryUnescape(c.Value)
 	var messages []string
 	if err := json.Unmarshal([]byte(decoded), &messages); err != nil {
-		// Fallback: single string (old format)
 		if decoded != "" {
 			return []string{decoded}
 		}
@@ -73,13 +61,4 @@ func FlashAlert(w http.ResponseWriter, r *http.Request) g.Node {
 		))
 	}
 	return g.Group(alerts)
-}
-
-func indexOf(s string, c byte) int {
-	for i := 0; i < len(s); i++ {
-		if s[i] == c {
-			return i
-		}
-	}
-	return -1
 }

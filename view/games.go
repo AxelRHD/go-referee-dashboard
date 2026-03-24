@@ -215,13 +215,27 @@ func GameTable(games []model.ListGamesRow, stats GameStats, f GameFilters) g.Nod
 
 func statsRow(stats GameStats) g.Node {
 	totalAll := stats.TotalFee + stats.TotalTravel
-	return h.Div(h.Class("row g-2 mb-3"),
-		gameStatCard("Spiele", fmt.Sprintf("%d", stats.Count)),
-		gameStatCard("Vergütung", eurFormat(stats.TotalFee)),
-		gameStatCard("Fahrtkosten", eurFormat(stats.TotalTravel)),
-		gameStatCard("Gesamt", eurFormat(totalAll)),
-		gameStatCard("Kilometer", fmt.Sprintf("%d", stats.TotalKm)),
-	)
+
+	posOrder := []string{"R", "CJ", "U", "LJ", "LM", "BJ", "FJ", "SJ"}
+	var posCards []g.Node
+	for _, p := range posOrder {
+		if count, ok := stats.Positions[p]; ok {
+			posCards = append(posCards, gameStatCard(p, fmt.Sprintf("%d", count)))
+		}
+	}
+
+	return g.Group([]g.Node{
+		h.Div(h.Class("row g-2 mb-2"),
+			gameStatCard("Spiele", fmt.Sprintf("%d", stats.Count)),
+			gameStatCard("Vergütung", eurFormat(stats.TotalFee)),
+			gameStatCard("Fahrtkosten", eurFormat(stats.TotalTravel)),
+			gameStatCard("Gesamt", eurFormat(totalAll)),
+			gameStatCard("Kilometer", fmt.Sprintf("%d", stats.TotalKm)),
+		),
+		h.Div(h.Class("row g-2 mb-3"),
+			g.Group(posCards),
+		),
+	})
 }
 
 func gameStatCard(label, value string) g.Node {

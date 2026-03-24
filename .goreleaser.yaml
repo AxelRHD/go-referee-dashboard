@@ -43,4 +43,4 @@ changelog:
 release:
   github:
     owner: AxelRHD
-    name: referee-dashboard
+    name: go-referee-dashboard

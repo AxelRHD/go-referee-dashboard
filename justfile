@@ -39,7 +39,7 @@ test:
 [group('build')]
 build:
     @mkdir -p {{bin_dir}}
-    @go build -ldflags "-X main.version={{version}}" -o {{bin_file}} ./cmd
+    @CGO_ENABLED=0 go build -ldflags "-X main.version={{version}} -s -w" -o {{bin_file}} ./cmd
 
 # ============================================================
 # Database

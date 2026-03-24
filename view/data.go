@@ -8,8 +8,20 @@ import (
 )
 
 func DataPage(w http.ResponseWriter, r *http.Request) g.Node {
+	return DataPageWithMessages(w, r, nil)
+}
+
+func DataPageWithMessages(w http.ResponseWriter, r *http.Request, messages []string) g.Node {
+	var alerts []g.Node
+	for _, msg := range messages {
+		alerts = append(alerts, h.Div(h.Class("alert alert-success alert-dismissible fade show"),
+			g.Text(msg),
+			h.Button(h.Class("btn-close"), g.Attr("type", "button"), g.Attr("data-bs-dismiss", "alert")),
+		))
+	}
+
 	return BasePage("Datenverwaltung",
-		FlashAlert(w, r),
+		g.Group(alerts),
 		h.H1(g.Text("Datenverwaltung")),
 		// Export section
 		h.Div(h.Class("card mb-4"),

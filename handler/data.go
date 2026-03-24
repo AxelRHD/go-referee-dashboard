@@ -169,8 +169,9 @@ func (dh *DataHandler) processImport(w http.ResponseWriter, r *http.Request, tex
 		}
 	}
 
-	view.SetFlashes(w, messages)
-	http.Redirect(w, r, "/data", http.StatusSeeOther)
+	page := view.DataPageWithMessages(w, r, messages)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	page.Render(w)
 }
 
 // SQL sanitization

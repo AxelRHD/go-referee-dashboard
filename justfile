@@ -1,7 +1,7 @@
 app_name := "referee-dashboard"
 bin_dir := "bin"
 bin_file := bin_dir / app_name
-version := `git rev-parse --short HEAD 2>/dev/null || echo "dev"`
+version := `git describe --tags --always 2>/dev/null || echo "dev"`
 
 [private]
 default:
@@ -67,10 +67,10 @@ generate:
 remote := "mimir"
 appdata_dir := "/mnt/data/docker/appdata/referee-dashboard"
 
-# Build Docker image with git version
+# Build Docker image (uses local binary)
 [group('deploy')]
-build-image:
-    docker build --build-arg VERSION={{version}} -t {{app_name}} .
+build-image: build
+    docker build -t {{app_name}} .
 
 # Push image to server
 [group('deploy')]

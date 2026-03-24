@@ -293,10 +293,13 @@ func DashboardPage(seasons []string, defaultSeason string) g.Node {
 		gameTableCard("Absolvierte Spiele", "bi-calendar-check",
 			"view === 'year' && showRecentGames && recentGames.length > 0", "g in recentGames", "recentGames.length"),
 		collapsibleSection("charts-body", "bi bi-bar-chart-fill", "Einsätze",
+			h.Div(h.Class("row g-3 mb-3"),
+				h.Div(h.Class("col-md-6"), widgetCard("nach Position", "chart-positions")),
+				h.Div(h.Class("col-md-6"), widgetCard("nach Monat", "chart-monthly")),
+			),
 			h.Div(h.Class("row g-3"),
-				h.Div(h.Class("col-md-3"), widgetCard("nach Position", "chart-positions")),
-				h.Div(h.Class("col-md-5"), widgetCard("nach Monat", "chart-monthly")),
-				h.Div(h.Class("col-md-4"), widgetCard("nach Liga", "chart-leagues")),
+				h.Div(h.Class("col-md-6"), widgetCard("Position / Liga", "chart-treemap")),
+				h.Div(h.Class("col-md-6"), widgetCard("nach Liga", "chart-leagues")),
 			),
 		),
 		collapsibleSection("fees-body", "bi bi-currency-euro", "Vergütung",
@@ -619,6 +622,7 @@ document.addEventListener('alpine:init', () => {
             this.renderFeeBar('chart-fee-total', g => g.fee + g.travel);
             this.renderFeeBar('chart-fee-base', g => g.fee);
             this.renderFeeBar('chart-fee-travel', g => g.travel);
+            this.renderTreemap('chart-treemap', this.filtered);
             this.renderVenueTop('chart-venues-top', this.filtered);
             this.renderMap('chart-map', this.filtered);
         },
@@ -1142,6 +1146,87 @@ document.addEventListener('alpine:init', () => {
                     monthLabels, totalArr, true, fmtEur
                 ),
             }), {responsive: true, displayModeBar: false});
+        },
+
+        renderTreemap(chartId, games) {
+            var colors = ['#5E81AC','#81A1C1','#88C0D0','#8FBCBB','#A3BE8C','#EBCB8B','#D08770','#BF616A','#B48EAD'];
+            var dark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+            var fg = getComputedStyle(document.body).color;
+
+            // Build hierarchy: Alle > position > league
+            var labels = ['Alle'];
+            var parents = [''];
+            var values = [games.length];
+            var markerColors = [dark ? '#2E3440' : '#ECEFF4'];
+
+            var posData = {};
+            games.forEach(g => {
+                if (!posData[g.position]) posData[g.position] = {};
+                posData[g.position][g.league] = (posData[g.position][g.league] || 0) + 1;
+            });
+
+            // Mix color towards white (light) or dark (dark theme)
+            function shadeColor(hex, factor) {
+                var r = parseInt(hex.slice(1,3), 16);
+                var g = parseInt(hex.slice(3,5), 16);
+                var b = parseInt(hex.slice(5,7), 16);
+                var target = dark ? 30 : 240;
+                r = Math.round(r + (target - r) * factor);
+                g = Math.round(g + (target - g) * factor);
+                b = Math.round(b + (target - b) * factor);
+                return '#' + [r,g,b].map(c => c.toString(16).padStart(2,'0')).join('');
+            }
+
+            var posOrder = this.positions.filter(p => posData[p]);
+            posOrder.forEach((pos, i) => {
+                var baseColor = colors[i %% colors.length];
+                var total = Object.values(posData[pos]).reduce((a, b) => a + b, 0);
+                labels.push(pos);
+                parents.push('Alle');
+                values.push(total);
+                markerColors.push(baseColor);
+
+                var leagues = Object.entries(posData[pos]).sort((a, b) => b[1] - a[1]);
+                leagues.forEach(([lg, count], j) => {
+                    labels.push(pos + '/' + lg);
+                    parents.push(pos);
+                    values.push(count);
+                    var shade = 0.2 + (j / Math.max(leagues.length - 1, 1)) * 0.4;
+                    markerColors.push(shadeColor(baseColor, shade));
+                });
+            });
+
+            // Display text: league name for leaves, "Pos (count)" for parents
+            var displayText = labels.map((l, idx) => {
+                var slash = l.indexOf('/');
+                if (slash >= 0) return l.substring(slash + 1);
+                if (l === 'Alle') return 'Alle (' + values[idx] + ')';
+                return l + ' (' + values[idx] + ')';
+            });
+
+            Plotly.newPlot(chartId, [{
+                type: 'treemap',
+                ids: labels,
+                labels: displayText,
+                parents: parents,
+                values: values,
+                marker: {
+                    colors: markerColors,
+                    line: {color: dark ? '#2E3440' : '#ECEFF4', width: 2},
+                },
+                textinfo: 'label+value',
+                textfont: {size: 12},
+                branchvalues: 'total',
+                pathbar: {visible: true, textfont: {size: 11}},
+                tiling: {packing: 'squarify', pad: 3},
+                maxdepth: 3,
+                level: 'Alle',
+            }], {
+                height: 350,
+                margin: {t: 25, b: 0, l: 0, r: 0},
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: {color: fg},
+            }, {responsive: true, displayModeBar: false});
         },
 
         renderVenueTop(chartId, games) {

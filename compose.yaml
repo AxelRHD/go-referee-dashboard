@@ -8,6 +8,7 @@ services:
     volumes:
       - CHANGE_TO_COMPOSE_DATA_PATH/referee-dashboard:/data
     environment:
-      - DB_PATH=/data/referee.db
-      - PORT=3000
+      - DB_PATH=${DB_PATH}
+      - PORT=${PORT}
+      - DEBUG=${DEBUG}
       - SECRET_KEY=${SECRET_KEY}

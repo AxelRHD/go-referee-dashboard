@@ -54,6 +54,9 @@ func NewServer(cfg config.Config) http.Handler {
 	dashboard := handler.NewDashboardHandler(queries)
 	dashboard.Routes(r)
 
+	data := handler.NewDataHandler(queries, db)
+	data.Routes(r)
+
 	r.Route("/api", func(r chi.Router) {
 		leagues.APIRoutes(r)
 		teams.APIRoutes(r)

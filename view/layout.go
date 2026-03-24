@@ -6,6 +6,8 @@ import (
 	h "maragu.dev/gomponents/html"
 )
 
+var Version = "dev"
+
 func BasePage(pageTitle string, content ...g.Node) g.Node {
 	return basePage(pageTitle, "container", content...)
 }
@@ -90,6 +92,7 @@ func navbar() g.Node {
 					g.Group(navItems),
 				),
 				themeToggle(),
+				h.Small(h.Class("text-muted ms-2"), g.Attr("style", "font-size:0.7rem"), g.Text(Version)),
 			),
 		),
 	)

@@ -72,10 +72,11 @@ appdata_dir := "/mnt/data/docker/appdata/referee-dashboard"
 build-image: build
     docker build -t {{app_name}} .
 
-# Push image to server
+# Push image to server and prune old images
 [group('deploy')]
 deploy-image:
     docker save {{app_name}} | ssh {{remote}} docker load
+    ssh {{remote}} docker image prune -f
 
 # Restart container on server
 [group('deploy')]

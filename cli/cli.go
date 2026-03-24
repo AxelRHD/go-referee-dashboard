@@ -144,5 +144,14 @@ func seedPositions(conn *sql.DB) error {
 	}
 
 	log.Printf("seeded %d positions", len(positions))
+
+	// Seed placeholder venue (id=0) for games without a venue
+	_, err := conn.Exec(
+		`INSERT OR IGNORE INTO venues (id, city, stadium) VALUES (0, 'Unbekannt', '#NV')`,
+	)
+	if err != nil {
+		return fmt.Errorf("seed unknown venue: %w", err)
+	}
+
 	return nil
 }

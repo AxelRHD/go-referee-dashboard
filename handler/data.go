@@ -206,6 +206,10 @@ func (dh *DataHandler) executeSQL(statements []string) (int, []string) {
 	var errors []string
 	count := 0
 
+	// Disable FK checks for import (dump order may vary)
+	dh.db.Exec("PRAGMA foreign_keys=OFF")
+	defer dh.db.Exec("PRAGMA foreign_keys=ON")
+
 	tx, err := dh.db.Begin()
 	if err != nil {
 		return 0, []string{fmt.Sprintf("Fehler beim Starten der Transaktion: %v", err)}

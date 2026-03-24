@@ -7,6 +7,11 @@ services:
       - "3001:3000"
     volumes:
       - CHANGE_TO_COMPOSE_DATA_PATH/referee-dashboard:/data
+    healthcheck:
+      test: ["CMD", "/referee-dashboard", "health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
     environment:
       - DB_PATH=${DB_PATH}
       - PORT=${PORT}

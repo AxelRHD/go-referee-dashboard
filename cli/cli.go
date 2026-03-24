@@ -25,6 +25,7 @@ func App(cfg config.Config, newServer ServerFunc, version string) *cli.Command {
 			serveCmd(cfg, newServer),
 			migrateCmd(cfg),
 			seedCmd(cfg),
+			healthCmd(cfg),
 		},
 	}
 }
@@ -80,6 +81,26 @@ func seedCmd(cfg config.Config) *cli.Command {
 			}
 			defer conn.Close()
 			return seedPositions(conn)
+		},
+	}
+}
+
+func healthCmd(cfg config.Config) *cli.Command {
+	return &cli.Command{
+		Name:  "health",
+		Usage: "Check if the server is healthy",
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			url := fmt.Sprintf("http://localhost:%d/health", cfg.Port)
+			resp, err := http.Get(url)
+			if err != nil {
+				return fmt.Errorf("health check failed: %w", err)
+			}
+			defer resp.Body.Close()
+			if resp.StatusCode != 200 {
+				return fmt.Errorf("health check returned %d", resp.StatusCode)
+			}
+			fmt.Println("ok")
+			return nil
 		},
 	}
 }

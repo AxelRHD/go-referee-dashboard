@@ -78,14 +78,9 @@ deploy-image:
     docker save {{app_name}} | ssh {{remote}} docker load
     ssh {{remote}} docker image prune -f
 
-# Restart container on server
+# Full deploy: build + push image
 [group('deploy')]
-deploy-restart:
-    gosctl run restart
-
-# Full deploy: build + push + restart
-[group('deploy')]
-deploy: build-image deploy-image deploy-restart
+deploy: build-image deploy-image
 
 # Show container logs
 [group('deploy')]

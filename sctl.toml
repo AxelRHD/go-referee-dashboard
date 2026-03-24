@@ -1,7 +1,3 @@
-[tasks.restart]
-host = "mimir"
-steps = ["docker restart referee-dashboard"]
-
 [tasks.logs]
 host = "mimir"
 steps = ["docker logs --tail 50 referee-dashboard"]

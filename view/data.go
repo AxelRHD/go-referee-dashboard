@@ -1,12 +1,15 @@
 package view
 
 import (
+	"net/http"
+
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
 )
 
-func DataPage() g.Node {
+func DataPage(w http.ResponseWriter, r *http.Request) g.Node {
 	return BasePage("Datenverwaltung",
+		FlashAlert(w, r),
 		h.H1(g.Text("Datenverwaltung")),
 		// Export section
 		h.Div(h.Class("card mb-4"),

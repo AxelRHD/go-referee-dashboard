@@ -32,7 +32,7 @@ func (h *DataHandler) Routes(r chi.Router) {
 }
 
 func (dh *DataHandler) Page(w http.ResponseWriter, r *http.Request) {
-	page := view.DataPage()
+	page := view.DataPage(w, r)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	page.Render(w)
 }

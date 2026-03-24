@@ -1152,7 +1152,7 @@ document.addEventListener('alpine:init', () => {
                 var venue = g.venue || '';
                 if (!venue) return;
                 var parts = venue.split(', ');
-                var city = parts.length > 1 ? parts[parts.length - 1] : parts[0];
+                var city = parts[0];
                 counts[city] = (counts[city] || 0) + 1;
             });
             var sorted = Object.entries(counts)

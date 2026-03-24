@@ -180,7 +180,7 @@ func GameTable(games []model.ListGamesRow, stats GameStats, f GameFilters) g.Nod
 	for _, gm := range pageGames {
 		venueDisplay := ""
 		if gm.VenueStadium != "" && gm.VenueCity != "" {
-			venueDisplay = gm.VenueStadium + ", " + gm.VenueCity
+			venueDisplay = gm.VenueCity + ", " + gm.VenueStadium
 		} else if gm.VenueCity != "" {
 			venueDisplay = gm.VenueCity
 		}
@@ -396,7 +396,7 @@ func GameForm(game *model.Game, errors map[string]string, data map[string]string
 	for _, v := range venues {
 		display := v.City
 		if v.Stadium != "" {
-			display = v.Stadium + ", " + v.City
+			display = v.City + ", " + v.Stadium
 		}
 		attrs := []g.Node{g.Attr("value", fmt.Sprintf("%d", v.ID))}
 		if fmt.Sprintf("%d", v.ID) == val("venue_id") {

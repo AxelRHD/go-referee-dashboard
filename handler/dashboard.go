@@ -75,7 +75,7 @@ func (dh *DashboardHandler) APIOverview(w http.ResponseWriter, r *http.Request) 
 			Fee:      g.RefereeFee,
 			Travel:   g.TravelCosts,
 			Km:       g.KmDriven,
-			Venue:    g.VenueDisplay,
+			Venue:    venueDisplay(g.VenueCity, g.VenueStadium),
 			VenueLat: g.VenueLat,
 			VenueLon: g.VenueLon,
 		})
@@ -152,7 +152,7 @@ func (dh *DashboardHandler) APISeason(w http.ResponseWriter, r *http.Request) {
 			Month:      g.Month,
 			Home:       g.HomeTeamName,
 			Away:       g.AwayTeamName,
-			Venue:      g.VenueDisplay,
+			Venue:      venueDisplay(g.VenueCity, g.VenueStadium),
 			VenueLat:   g.VenueLat,
 			VenueLon:   g.VenueLon,
 			League:     leagueShort[g.LeagueID],
@@ -193,4 +193,11 @@ func (dh *DashboardHandler) APISeason(w http.ResponseWriter, r *http.Request) {
 		"available_positions": availPos,
 		"available_leagues":   availLeagues,
 	})
+}
+
+func venueDisplay(city, stadium string) string {
+	if stadium != "" && city != "" {
+		return city + ", " + stadium
+	}
+	return city
 }

@@ -218,7 +218,7 @@ func (gh *GameHandler) ExportCSV(w http.ResponseWriter, r *http.Request) {
 	for _, gm := range games {
 		venueDisplay := ""
 		if gm.VenueStadium != "" && gm.VenueCity != "" {
-			venueDisplay = gm.VenueStadium + ", " + gm.VenueCity
+			venueDisplay = gm.VenueCity + ", " + gm.VenueStadium
 		} else if gm.VenueCity != "" {
 			venueDisplay = gm.VenueCity
 		}

@@ -16,7 +16,8 @@ SELECT
     substr(g.game_date, 6, 2) AS month,
     ht.name AS home_team_name,
     at2.name AS away_team_name,
-    COALESCE(NULLIF(v.stadium || ', ' || v.city, ', ' || v.city), v.city, '') AS venue_display,
+    COALESCE(v.city, '') AS venue_city,
+    COALESCE(v.stadium, '') AS venue_stadium,
     COALESCE(v.lat, 0.0) AS venue_lat,
     COALESCE(v.lon, 0.0) AS venue_lon,
     COALESCE(NULLIF(l.short_name, ''), l.name) AS league_short,
@@ -42,7 +43,8 @@ type ListGamesBySeasonRow struct {
 	Month        string
 	HomeTeamName string
 	AwayTeamName string
-	VenueDisplay string
+	VenueCity    string
+	VenueStadium string
 	VenueLat     float64
 	VenueLon     float64
 	LeagueShort  string
@@ -70,7 +72,8 @@ func (q *Queries) ListGamesBySeason(ctx context.Context, gameDate string) ([]Lis
 			&i.Month,
 			&i.HomeTeamName,
 			&i.AwayTeamName,
-			&i.VenueDisplay,
+			&i.VenueCity,
+			&i.VenueStadium,
 			&i.VenueLat,
 			&i.VenueLon,
 			&i.LeagueShort,
@@ -105,7 +108,8 @@ SELECT
     g.referee_fee,
     g.travel_costs,
     g.km_driven,
-    COALESCE(NULLIF(v.stadium || ', ' || v.city, ', ' || v.city), v.city, '') AS venue_display,
+    COALESCE(v.city, '') AS venue_city,
+    COALESCE(v.stadium, '') AS venue_stadium,
     COALESCE(v.lat, 0.0) AS venue_lat,
     COALESCE(v.lon, 0.0) AS venue_lon
 FROM games g
@@ -123,7 +127,8 @@ type ListGamesFullRow struct {
 	RefereeFee   float64
 	TravelCosts  float64
 	KmDriven     int64
-	VenueDisplay string
+	VenueCity    string
+	VenueStadium string
 	VenueLat     float64
 	VenueLon     float64
 }
@@ -146,7 +151,8 @@ func (q *Queries) ListGamesFull(ctx context.Context) ([]ListGamesFullRow, error)
 			&i.RefereeFee,
 			&i.TravelCosts,
 			&i.KmDriven,
-			&i.VenueDisplay,
+			&i.VenueCity,
+			&i.VenueStadium,
 			&i.VenueLat,
 			&i.VenueLon,
 		); err != nil {

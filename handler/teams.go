@@ -171,7 +171,7 @@ func (th *TeamHandler) ExportCSV(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
-	w.Header().Set("Content-Disposition", `attachment; filename="teams.csv"`)
+	w.Header().Set("Content-Disposition", exportFilename("teams", "csv"))
 	w.Write([]byte("\xEF\xBB\xBF"))
 
 	cw := csv.NewWriter(w)
@@ -196,7 +196,7 @@ func (th *TeamHandler) ExportSQL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.Header().Set("Content-Disposition", `attachment; filename="teams.sql"`)
+	w.Header().Set("Content-Disposition", exportFilename("teams", "sql"))
 
 	for _, t := range teams {
 		fmt.Fprintf(w, "INSERT INTO teams (name, state, is_active, remarks) VALUES (%s, %s, %d, %s);\n",

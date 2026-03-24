@@ -214,7 +214,7 @@ func (vh *VenueHandler) ExportCSV(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
-	w.Header().Set("Content-Disposition", `attachment; filename="spielorte.csv"`)
+	w.Header().Set("Content-Disposition", exportFilename("spielorte", "csv"))
 	w.Write([]byte("\xEF\xBB\xBF"))
 
 	cw := csv.NewWriter(w)
@@ -243,7 +243,7 @@ func (vh *VenueHandler) ExportSQL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.Header().Set("Content-Disposition", `attachment; filename="spielorte.sql"`)
+	w.Header().Set("Content-Disposition", exportFilename("spielorte", "sql"))
 
 	for _, v := range venues {
 		fmt.Fprintf(w, "INSERT INTO venues (city, stadium, lat, lon) VALUES (%s, %s, %f, %f);\n",

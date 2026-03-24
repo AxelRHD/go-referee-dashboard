@@ -207,7 +207,7 @@ func (gh *GameHandler) ExportCSV(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
-	w.Header().Set("Content-Disposition", `attachment; filename="spiele.csv"`)
+	w.Header().Set("Content-Disposition", exportFilename("spiele", "csv"))
 	w.Write([]byte("\xEF\xBB\xBF"))
 
 	cw := csv.NewWriter(w)
@@ -245,7 +245,7 @@ func (gh *GameHandler) ExportSQL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.Header().Set("Content-Disposition", `attachment; filename="spiele.sql"`)
+	w.Header().Set("Content-Disposition", exportFilename("spiele", "sql"))
 
 	for _, gm := range games {
 		fmt.Fprintf(w, "INSERT INTO games (game_date, game_time, home_team_id, away_team_id, venue_id, league_id, position, referee_fee, travel_costs, km_driven, exhibition, remarks) VALUES (%s, %s, %d, %d, %d, %d, %s, %f, %f, %d, %d, %s);\n",

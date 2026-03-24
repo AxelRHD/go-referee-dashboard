@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -174,7 +175,7 @@ func (lh *LeagueHandler) ExportCSV(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
-	w.Header().Set("Content-Disposition", `attachment; filename="ligen.csv"`)
+	w.Header().Set("Content-Disposition", exportFilename("ligen", "csv"))
 	// UTF-8 BOM for Excel
 	w.Write([]byte("\xEF\xBB\xBF"))
 
@@ -196,7 +197,7 @@ func (lh *LeagueHandler) ExportSQL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.Header().Set("Content-Disposition", `attachment; filename="ligen.sql"`)
+	w.Header().Set("Content-Disposition", exportFilename("ligen", "sql"))
 
 	for _, lg := range leagues {
 		fmt.Fprintf(w, "INSERT INTO leagues (name, short_name, sorter, remarks) VALUES (%s, %s, %d, %s);\n",
@@ -240,6 +241,13 @@ func formValues(r *http.Request) map[string]string {
 
 func sqlEscape(val string) string {
 	return "'" + strings.ReplaceAll(val, "'", "''") + "'"
+}
+
+const exportTimestampFormat = "2006-01-02_150405"
+
+func exportFilename(base, ext string) string {
+	ts := time.Now().Format(exportTimestampFormat)
+	return fmt.Sprintf(`attachment; filename="%s_%s.%s"`, base, ts, ext)
 }
 
 func jsonResponse(w http.ResponseWriter, data any) {

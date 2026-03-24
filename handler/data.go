@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -39,9 +40,10 @@ func (dh *DataHandler) Page(w http.ResponseWriter, r *http.Request) {
 
 func (dh *DataHandler) Dump(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.Header().Set("Content-Disposition", `attachment; filename="referee_dump.sql"`)
+	w.Header().Set("Content-Disposition", exportFilename("referee_dump", "sql"))
 
 	tableOrder := []string{"positions", "leagues", "teams", "venues", "games"}
+	fmt.Fprintf(w, "-- Referee Dashboard Dump %s\n", time.Now().Format("2006-01-02 15:04:05"))
 	fmt.Fprintln(w, "BEGIN TRANSACTION;")
 
 	for _, table := range tableOrder {
@@ -84,9 +86,10 @@ func (dh *DataHandler) Dump(w http.ResponseWriter, r *http.Request) {
 
 func (dh *DataHandler) ExportAll(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.Header().Set("Content-Disposition", `attachment; filename="referee_data.sql"`)
+	w.Header().Set("Content-Disposition", exportFilename("referee_data", "sql"))
 
 	tableOrder := []string{"positions", "leagues", "teams", "venues", "games"}
+	fmt.Fprintf(w, "-- Referee Dashboard Data Export %s\n", time.Now().Format("2006-01-02 15:04:05"))
 
 	for _, table := range tableOrder {
 		rows, err := dh.db.Query(fmt.Sprintf("SELECT * FROM [%s]", table))

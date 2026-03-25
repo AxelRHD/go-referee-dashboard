@@ -92,7 +92,55 @@ Etabliert das Pattern für alle weiteren Module:
 - Import/Export-Seite
 - SQL-Dump, INSERT-Export, CSV/SQL-Import mit Sanitization
 
-### Phase 7 — Deployment
+### Phase 7 — Deployment ✅
 - Dockerfile + compose.yaml finalisieren
 - Static Assets (nord.css, pfeife.png) übernehmen
 - Deployment auf mimir via Docker Compose
+
+---
+
+## Nächste Schritte
+
+### ECharts Map Migration (Maps only, Plotly bleibt für Rest)
+Plotly `scattermapbox` → ECharts `scatter` auf `geo` für bessere Maps ohne Mapbox.
+
+**Dateien:**
+- `view/layout.go` — ECharts CDN Script hinzufügen (nach Plotly, koexistieren)
+- `view/dashboard.go` — `renderMap()` umschreiben + GeoJSON fetch in `init()`
+
+**Ansatz:** Beide Libraries parallel laden, Toggle-Switch im Dashboard (Alpine.js State `chartLib: 'plotly'|'echarts'`, localStorage). Jede Render-Funktion hat ein Plotly- und ECharts-Pendant. So kann man direkt vergleichen und schrittweise migrieren.
+
+**Schritte:**
+1. ECharts v5 via CDN laden: `https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js`
+2. Deutschland GeoJSON in `init()` registrieren: `echarts.registerMap('Germany', geoJson)`
+3. `renderMap()` duplizieren als `renderMapECharts()`:
+   - `echarts.init()` / `getInstanceByDom()` für Reuse
+   - `geo: { map: 'Germany', roam: true }` für Zoom/Pan
+   - `series: { type: 'scatter', coordinateSystem: 'geo' }` für Bubbles
+   - **Koordinaten: ECharts nutzt [lon, lat], nicht [lat, lon]!**
+   - Tooltip: `venue name (count Spiele)`
+4. Theme-Wechsel: Chart `dispose()` + neu erstellen bei `theme-changed`
+5. Nord-Farben:
+   - Dark: `areaColor: '#3B4252'`, `borderColor: '#4C566A'`
+   - Light: `areaColor: '#E5E9F0'`, `borderColor: '#D8DEE9'`
+   - Scatter: `color: '#5E81AC'`, `opacity: 0.7`
+
+6. Toggle-Switch im Dashboard-Sidebar:
+   - Alpine State: `chartLib: localStorage.getItem('db_chartLib') || 'plotly'`
+   - Button-Group wie Jahr/Übersicht: `Plotly | ECharts`
+   - In jeder Render-Funktion: `if (this.chartLib === 'echarts') renderXxxECharts() else renderXxxPlotly()`
+   - Start mit Map, dann schrittweise weitere Charts portieren
+
+**Verifizierung:**
+- Toggle zwischen Plotly und ECharts
+- Map zeigt Deutschland mit Scatter-Bubbles in beiden Varianten
+- Zoom/Pan funktioniert bei ECharts
+- Hover zeigt Venue + Anzahl
+- Theme-Toggle aktualisiert Farben
+- localStorage merkt sich die Auswahl
+
+### Spielorte: Anzeigenamen
+Aktuell zeigt die Map den vollen Venue-String ("City, Stadium") als Label. Überlegung: einen separaten `display_name` oder kürzeren Anzeigenamen für die Karte und Tooltips definieren. Z.B. nur Stadt anzeigen wenn eindeutig, oder Stadion-Kürzel. Muss noch entschieden werden.
+
+### Gridstack.js (optional, v0.2+)
+Dashboard-Widgets per Drag & Drop anordnen, Layout in localStorage speichern.

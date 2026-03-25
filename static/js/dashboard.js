@@ -149,8 +149,24 @@ document.addEventListener('alpine:init', () => {
             };
         },
 
+        _germanyMapLoaded: false,
         init() {
             this.setupEChartsResize();
+            // Load Germany GeoJSON for ECharts
+            if (!this._germanyMapLoaded && typeof echarts !== 'undefined') {
+                fetch('/static/js/germany.geo.json')
+                    .then(r => r.json())
+                    .then(geo => {
+                        echarts.registerMap('Germany', geo);
+                        this._germanyMapLoaded = true;
+                        if (this.chartLib === 'echarts') {
+                            this.renderMapEC('chart-map', this.filtered);
+                            if (this.view === 'overview') {
+                                this.renderMapEC('chart-overview-map', this.overviewFiltered);
+                            }
+                        }
+                    });
+            }
             this.loadSeason();
             if (this.view === 'overview') {
                 this.loadOverview();
@@ -261,9 +277,8 @@ document.addEventListener('alpine:init', () => {
                 this.renderFeeBar('chart-fee-base', g => g.fee);
                 this.renderFeeBar('chart-fee-travel', g => g.travel);
             }
-            ec ? this.renderTreemapEC('chart-treemap', this.filtered) : this.renderTreemap('chart-treemap', this.filtered);
-            this.renderVenueTop('chart-venues-top', this.filtered);
-            this.renderMap('chart-map', this.filtered);
+            ec ? this.renderVenueTopEC('chart-venues-top', this.filtered) : this.renderVenueTop('chart-venues-top', this.filtered);
+            ec ? this.renderMapEC('chart-map', this.filtered) : this.renderMap('chart-map', this.filtered);
         },
 
         // ECharts helper: init or reuse instance
@@ -1162,6 +1177,155 @@ document.addEventListener('alpine:init', () => {
                 paper_bgcolor: 'rgba(0,0,0,0)',
                 font: {color: fg},
             }, {responsive: true, displayModeBar: false});
+        },
+
+        renderVenueTopEC(chartId, games) {
+            var colors = ['#5E81AC','#81A1C1','#88C0D0','#8FBCBB','#A3BE8C','#EBCB8B','#D08770','#BF616A','#B48EAD'];
+            var counts = {};
+            games.forEach(g => {
+                var venue = g.venue || '';
+                if (!venue) return;
+                var city = venue.split(', ')[0];
+                counts[city] = (counts[city] || 0) + 1;
+            });
+            var sorted = Object.entries(counts).sort((a, b) => a[1] - b[1]);
+            var top = sorted.slice(-10);
+            var labels = top.map(e => e[0]);
+            var values = top.map(e => e[1]);
+
+            var chart = this.ecInit(chartId, 500);
+            if (!chart) return;
+            chart.setOption({
+                tooltip: {trigger: 'axis', axisPointer: {type: 'shadow'}},
+                grid: {left: 10, right: 20, top: 10, bottom: 10, containLabel: true},
+                xAxis: {type: 'value'},
+                yAxis: {type: 'category', data: labels},
+                series: [{
+                    type: 'bar',
+                    data: values.map((v, i) => ({value: v, itemStyle: {color: colors[i % colors.length]}})),
+                    label: {show: true, position: 'right', fontSize: 11},
+                }],
+            });
+        },
+
+        renderMapEC(chartId, games) {
+            if (!this._germanyMapLoaded) return;
+            var dark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+            var venues = {};
+            games.forEach(g => {
+                if (!g.venue_lat || !g.venue_lon || (g.venue_lat === 0 && g.venue_lon === 0)) return;
+                var key = g.venue_lat.toFixed(4) + ',' + g.venue_lon.toFixed(4);
+                if (!venues[key]) {
+                    venues[key] = {lat: g.venue_lat, lon: g.venue_lon, name: g.venue || '', count: 0};
+                }
+                venues[key].count++;
+            });
+            var entries = Object.values(venues);
+            if (!entries.length) return;
+
+            var maxCount = Math.max(...entries.map(e => e.count));
+            var data = entries.map(e => ({
+                name: e.name,
+                value: [e.lon, e.lat, e.count],
+            }));
+
+            var lats = entries.map(e => e.lat);
+            var lons = entries.map(e => e.lon);
+            // Padding around data bounds
+            var pad = 0;
+            var minLon = Math.min(...lons) - pad;
+            var maxLon = Math.max(...lons) + pad;
+            var minLat = Math.min(...lats) - pad;
+            var maxLat = Math.max(...lats) + pad;
+
+            // Find which Bundesländer have venues using geo containPoint
+            var chart = this.ecInit(chartId, 500);
+            if (!chart) return;
+
+            // First render to get the geo coordinate system
+            var activeColor = dark ? '#434C5E' : '#D8DEE9';
+            var inactiveColor = dark ? '#3B4252' : '#E5E9F0';
+            var borderColor = dark ? '#4C566A' : '#D8DEE9';
+
+            // Check which regions contain venues
+            var activeRegions = [];
+            var mapData = echarts.getMap('Germany');
+            if (mapData && mapData.geoJSON) {
+                var features = mapData.geoJSON.features || [];
+                features.forEach(function(feature) {
+                    var name = feature.properties.name;
+                    var hasVenue = entries.some(function(e) {
+                        // Simple bounding box check
+                        if (!feature.geometry || !feature.geometry.coordinates) return false;
+                        var coords = feature.geometry.coordinates;
+                        var flat = coords.flat(3);
+                        var lons = [], lats = [];
+                        for (var i = 0; i < flat.length; i += 2) {
+                            lons.push(flat[i]);
+                            lats.push(flat[i+1]);
+                        }
+                        var minLon = Math.min.apply(null, lons), maxLon = Math.max.apply(null, lons);
+                        var minLat = Math.min.apply(null, lats), maxLat = Math.max.apply(null, lats);
+                        return e.lon >= minLon && e.lon <= maxLon && e.lat >= minLat && e.lat <= maxLat;
+                    });
+                    if (hasVenue) {
+                        activeRegions.push({
+                            name: name,
+                            itemStyle: {areaColor: activeColor},
+                        });
+                    }
+                });
+            }
+
+            chart.setOption({
+                geo: {
+                    boundingCoords: [[minLon, maxLat], [maxLon, minLat]],
+                    roam: true,
+                    map: 'Germany',
+                    itemStyle: {
+                        areaColor: inactiveColor,
+                        borderColor: borderColor,
+                    },
+                    emphasis: {
+                        itemStyle: {
+                            areaColor: dark ? '#4C566A' : '#D8DEE9',
+                        },
+                    },
+                    regions: activeRegions,
+                },
+                toolbox: {
+                    show: true,
+                    right: 10, top: 10,
+                    feature: {
+                        restore: {title: 'Zurücksetzen'},
+                    },
+                    iconStyle: {borderColor: dark ? '#D8DEE9' : '#4C566A'},
+                },
+                tooltip: {
+                    formatter: function(params) {
+                        if (params.seriesType === 'scatter') {
+                            return params.name + ' (' + params.value[2] + ' Spiele)';
+                        }
+                        return params.name;
+                    },
+                },
+                series: [{
+                    type: 'scatter',
+                    coordinateSystem: 'geo',
+                    data: data,
+                    symbolSize: function(val) {
+                        return Math.max(8, Math.sqrt(val[2] / maxCount) * 40);
+                    },
+                    itemStyle: {color: '#5E81AC', opacity: 0.7},
+                    label: {
+                        show: true,
+                        formatter: '{b}',
+                        position: 'right',
+                        fontSize: 10,
+                        color: dark ? '#D8DEE9' : '#2E3440',
+                    },
+                }],
+            });
         },
 
         renderVenueTop(chartId, games) {

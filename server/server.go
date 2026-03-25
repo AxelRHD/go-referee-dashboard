@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -28,6 +29,30 @@ func NewServer(cfg config.Config) http.Handler {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.StripSlashes)
+
+	// Setup handler + redirect middleware
+	setup := handler.NewSetupHandler(db)
+
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			path := r.URL.Path
+			// Skip redirect for setup, static, health, and API routes
+			if strings.HasPrefix(path, "/setup") ||
+				strings.HasPrefix(path, "/static") ||
+				strings.HasPrefix(path, "/api") ||
+				path == "/health" {
+				next.ServeHTTP(w, r)
+				return
+			}
+			if setup.NeedsSetup() {
+				http.Redirect(w, r, "/setup", http.StatusFound)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	})
+
+	setup.Routes(r)
 
 	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 

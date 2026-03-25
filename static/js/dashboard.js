@@ -181,7 +181,12 @@ document.addEventListener('alpine:init', () => {
                 localStorage.setItem('db_season', v);
                 this.loadSeason();
             });
-            this.$watch('filtered', () => this.renderCharts());
+            this.$watch('filtered', () => {
+                this.$nextTick(() => {
+                    this.renderCharts();
+                    setTimeout(() => this._resizeAllECharts(), 200);
+                });
+            });
             this.$watch('filterLeague', (v) => {
                 localStorage.setItem('db_filterLeague', v);
                 this.renderPositionChart();
@@ -191,9 +196,15 @@ document.addEventListener('alpine:init', () => {
             });
             this.$watch('onlyCompleted', (v) => {
                 localStorage.setItem('db_onlyCompleted', v);
-                this.renderCharts();
+                this.$nextTick(() => {
+                    this.renderCharts();
+                    setTimeout(() => this._resizeAllECharts(), 200);
+                });
                 if (this.view === 'overview') {
-                    this.$nextTick(() => this.renderOverviewCharts());
+                    this.$nextTick(() => {
+                        this.renderOverviewCharts();
+                        setTimeout(() => this._resizeAllECharts(), 200);
+                    });
                 }
             });
             this.$watch('showRecentGames', (v) => {
@@ -265,6 +276,17 @@ document.addEventListener('alpine:init', () => {
         },
 
         renderCharts() {
+            var f = this.filtered;
+            if (!f.length) {
+                // Clear all year view charts
+                ['chart-positions','chart-monthly','chart-leagues','chart-calendar',
+                 'chart-fee-total','chart-fee-base','chart-fee-travel',
+                 'chart-venues-top','chart-map'].forEach(id => {
+                    var el = document.getElementById(id);
+                    if (el) { var inst = echarts.getInstanceByDom(el); if (inst) inst.dispose(); }
+                });
+                return;
+            }
             this.renderPositionChart();
             this.renderMonthlyChart();
             this.renderLeagueChart();
@@ -272,8 +294,8 @@ document.addEventListener('alpine:init', () => {
             this.renderFeeBar('chart-fee-total', g => g.fee + g.travel);
             this.renderFeeBar('chart-fee-base', g => g.fee);
             this.renderFeeBar('chart-fee-travel', g => g.travel);
-            this.renderVenueTop('chart-venues-top', this.filtered);
-            this.renderMap('chart-map', this.filtered);
+            this.renderVenueTop('chart-venues-top', f);
+            this.renderMap('chart-map', f);
         },
 
         // ECharts helper: init or reuse instance

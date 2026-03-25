@@ -252,9 +252,15 @@ document.addEventListener('alpine:init', () => {
             ec ? this.renderPositionChartEC() : this.renderPositionChart();
             ec ? this.renderMonthlyChartEC() : this.renderMonthlyChart();
             ec ? this.renderLeagueChartEC() : this.renderLeagueChart();
-            this.renderFeeBar('chart-fee-total', g => g.fee + g.travel);
-            this.renderFeeBar('chart-fee-base', g => g.fee);
-            this.renderFeeBar('chart-fee-travel', g => g.travel);
+            if (ec) {
+                this.renderFeeBarEC('chart-fee-total', g => g.fee + g.travel);
+                this.renderFeeBarEC('chart-fee-base', g => g.fee);
+                this.renderFeeBarEC('chart-fee-travel', g => g.travel);
+            } else {
+                this.renderFeeBar('chart-fee-total', g => g.fee + g.travel);
+                this.renderFeeBar('chart-fee-base', g => g.fee);
+                this.renderFeeBar('chart-fee-travel', g => g.travel);
+            }
             ec ? this.renderTreemapEC('chart-treemap', this.filtered) : this.renderTreemap('chart-treemap', this.filtered);
             this.renderVenueTop('chart-venues-top', this.filtered);
             this.renderMap('chart-map', this.filtered);
@@ -974,6 +980,60 @@ document.addEventListener('alpine:init', () => {
                 margin: {t: 10, b: 80, l: 40, r: 10},
                 xaxis: {tickangle: -45},
             }), {responsive: true, displayModeBar: false});
+        },
+
+        renderFeeBarEC(chartId, valueFn) {
+            var colors = ['#5E81AC','#81A1C1','#88C0D0','#8FBCBB','#A3BE8C','#EBCB8B','#D08770','#BF616A','#B48EAD'];
+            var allMonths = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+            var f = this.filtered;
+            var data = {};
+            var monthsPresent = new Set();
+            f.forEach(g => {
+                var m = parseInt(g.month) - 1;
+                data[g.position] = data[g.position] || {};
+                data[g.position][m] = (data[g.position][m] || 0) + valueFn(g);
+                monthsPresent.add(m);
+            });
+            var sortedMonths = [...monthsPresent].sort((a, b) => a - b);
+            var monthLabels = sortedMonths.map(m => allMonths[m] + ' ' + this.season);
+            var posWithData = this.positions.filter(p => data[p]);
+
+            var totals = sortedMonths.map(m => {
+                var t = 0;
+                posWithData.forEach(p => { t += (data[p] && data[p][m]) || 0; });
+                return t;
+            });
+
+            var chart = this.ecInit(chartId);
+            if (!chart) return;
+            var series = posWithData.map((p, i) => ({
+                name: p,
+                type: 'bar',
+                stack: 'total',
+                data: sortedMonths.map(m => data[p][m] || 0),
+                itemStyle: {color: colors[i % colors.length]},
+            }));
+            if (series.length > 0) {
+                series[series.length - 1].label = {
+                    show: true,
+                    position: 'right',
+                    fontSize: 10,
+                    formatter: function(params) {
+                        return Math.round(totals[params.dataIndex]) + ' €';
+                    },
+                };
+            }
+            chart.setOption({
+                tooltip: {
+                    trigger: 'axis', axisPointer: {type: 'shadow'},
+                    valueFormatter: v => Math.round(v) + ' €',
+                },
+                legend: {data: posWithData, bottom: 0, textStyle: {fontSize: 10}},
+                grid: {left: 10, right: 60, top: 10, bottom: 30, containLabel: true},
+                xAxis: {type: 'value', axisLabel: {formatter: v => Math.round(v) + ' €'}},
+                yAxis: {type: 'category', data: monthLabels},
+                series: series,
+            });
         },
 
         renderFeeBar(chartId, valueFn) {

@@ -565,17 +565,21 @@ document.addEventListener('alpine:init', () => {
 
         renderOverviewCharts() {
             if (!this.overviewLoaded) return;
-            this.renderOverviewGamesPerYear();
-            this.renderOverviewPositionTrend();
-            this.renderOverviewPositionPie();
-            this.renderOverviewLeagues();
-            this.renderOverviewFeePerYear();
-            this.renderOverviewAvgPerGame();
-            this.renderOverviewKmPerYear();
-            this.renderOverviewSankey();
-            this.renderOverviewRiver();
-            this.renderVenueTop('chart-overview-venues-top', this.overviewFiltered);
-            this.renderMap('chart-overview-map', this.overviewFiltered);
+            var self = this;
+            var tasks = [
+                () => self.renderOverviewGamesPerYear(),
+                () => self.renderOverviewPositionTrend(),
+                () => self.renderOverviewPositionPie(),
+                () => self.renderOverviewLeagues(),
+                () => self.renderOverviewFeePerYear(),
+                () => self.renderOverviewAvgPerGame(),
+                () => self.renderOverviewKmPerYear(),
+                () => self.renderOverviewSankey(),
+                () => self.renderOverviewRiver(),
+                () => self.renderVenueTop('chart-overview-venues-top', self.overviewFiltered),
+                () => self.renderMap('chart-overview-map', self.overviewFiltered),
+            ];
+            tasks.forEach((fn, i) => setTimeout(fn, i * 10));
         },
 
         // --- ECharts Overview Charts ---

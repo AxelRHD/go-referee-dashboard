@@ -159,12 +159,19 @@ document.addEventListener('alpine:init', () => {
                     .then(geo => {
                         echarts.registerMap('Germany', geo);
                         this._germanyMapLoaded = true;
-                        if (this.chartLib === 'echarts') {
-                            this.renderMapEC('chart-map', this.filtered);
-                            if (this.view === 'overview') {
-                                this.renderMapEC('chart-overview-map', this.overviewFiltered);
+                        // Re-render all maps now that geo is available
+                        this.$nextTick(() => {
+                            if (this.chartLib === 'echarts') {
+                                if (this.games.length) {
+                                    this.renderMapEC('chart-map', this.filtered);
+                                    this.renderVenueTopEC('chart-venues-top', this.filtered);
+                                }
+                                if (this.view === 'overview' && this.overviewLoaded) {
+                                    this.renderMapEC('chart-overview-map', this.overviewFiltered);
+                                    this.renderVenueTopEC('chart-overview-venues-top', this.overviewFiltered);
+                                }
                             }
-                        }
+                        });
                     });
             }
             this.loadSeason();
@@ -225,7 +232,10 @@ document.addEventListener('alpine:init', () => {
                 if (v === 'overview') {
                     this.loadOverview();
                 } else {
-                    this.$nextTick(() => this.renderCharts());
+                    this.$nextTick(() => {
+                        this.renderCharts();
+                        setTimeout(() => this._resizeAllECharts(), 200);
+                    });
                 }
             });
             this.$watch('chartLib', (v) => {
@@ -303,6 +313,13 @@ document.addEventListener('alpine:init', () => {
                 });
             };
             window.addEventListener('resize', this._resizeHandler);
+        },
+
+        _resizeAllECharts() {
+            document.querySelectorAll('[id^="chart-"]').forEach(el => {
+                var instance = echarts.getInstanceByDom(el);
+                if (instance) instance.resize();
+            });
         },
 
         // Dispose all ECharts instances (on lib switch or theme change)
@@ -702,7 +719,10 @@ document.addEventListener('alpine:init', () => {
             this.ovYearFrom = localStorage.getItem('db_ovYearFrom') || minDefault;
             this.ovYearTo = localStorage.getItem('db_ovYearTo') || maxY;
             this.overviewLoaded = true;
-            this.$nextTick(() => this.renderOverviewCharts());
+            this.$nextTick(() => {
+                this.renderOverviewCharts();
+                setTimeout(() => this._resizeAllECharts(), 200);
+            });
         },
 
         yearLabels(years) {
@@ -716,17 +736,416 @@ document.addEventListener('alpine:init', () => {
 
         renderOverviewCharts() {
             if (!this.overviewLoaded) return;
-            this.renderOverviewGamesPerYear();
-            this.renderOverviewPositionTrend();
-            this.renderOverviewPositionPie();
-            this.renderOverviewFeePerYear();
-            this.renderOverviewAvgPerGame();
-            this.renderOverviewKmPerYear();
-            this.renderOverviewSankey();
-            this.renderOverviewLeagues();
-            this.renderVenueTop('chart-overview-venues-top', this.overviewFiltered);
-            this.renderMap('chart-overview-map', this.overviewFiltered);
+            var ec = this.chartLib === 'echarts';
+            ec ? this.renderOverviewGamesPerYearEC() : this.renderOverviewGamesPerYear();
+            ec ? this.renderOverviewPositionTrendEC() : this.renderOverviewPositionTrend();
+            ec ? this.renderOverviewPositionPieEC() : this.renderOverviewPositionPie();
+            ec ? this.renderOverviewLeaguesEC() : this.renderOverviewLeagues();
+            ec ? this.renderOverviewFeePerYearEC() : this.renderOverviewFeePerYear();
+            ec ? this.renderOverviewAvgPerGameEC() : this.renderOverviewAvgPerGame();
+            ec ? this.renderOverviewKmPerYearEC() : this.renderOverviewKmPerYear();
+            ec ? this.renderOverviewSankeyEC() : this.renderOverviewSankey();
+            if (ec) this.renderOverviewRiverEC();
+            ec ? this.renderVenueTopEC('chart-overview-venues-top', this.overviewFiltered) : this.renderVenueTop('chart-overview-venues-top', this.overviewFiltered);
+            ec ? this.renderMapEC('chart-overview-map', this.overviewFiltered) : this.renderMap('chart-overview-map', this.overviewFiltered);
         },
+
+        // --- ECharts Overview Charts ---
+
+        renderOverviewGamesPerYearEC() {
+            var colors = ['#5E81AC','#81A1C1','#88C0D0','#8FBCBB','#A3BE8C','#EBCB8B','#D08770','#BF616A','#B48EAD'];
+            var byYear = this.overviewByYear;
+            var years = this.overviewYears;
+            var posWithData = this.overviewPositions.filter(p =>
+                years.some(y => (byYear[y].by_position[p] || 0) > 0)
+            );
+            var totals = years.map(y => byYear[y].count);
+
+            var chart = this.ecInit('chart-overview-games');
+            if (!chart) return;
+            var series = posWithData.map((p, i) => ({
+                name: p,
+                type: 'bar',
+                stack: 'total',
+                data: years.map(y => byYear[y].by_position[p] || 0),
+                itemStyle: {color: colors[i % colors.length]},
+            }));
+            if (series.length > 0) {
+                series[series.length - 1].label = {
+                    show: true, position: 'top', fontSize: 10,
+                    formatter: function(params) { return totals[params.dataIndex]; },
+                };
+            }
+            chart.setOption({
+                tooltip: {trigger: 'axis', axisPointer: {type: 'shadow'}},
+                legend: {data: posWithData, bottom: 0, textStyle: {fontSize: 10}},
+                grid: {left: 30, right: 10, top: 20, bottom: 30, containLabel: true},
+                xAxis: {type: 'category', data: years},
+                yAxis: {type: 'value'},
+                series: series,
+            });
+        },
+
+        renderOverviewPositionTrendEC() {
+            var colors = ['#5E81AC','#81A1C1','#88C0D0','#8FBCBB','#A3BE8C','#EBCB8B','#D08770','#BF616A','#B48EAD'];
+            var byYear = this.overviewByYear;
+            var years = this.overviewYears;
+            var posWithData = this.overviewPositions.filter(p =>
+                years.some(y => (byYear[y].by_position[p] || 0) > 0)
+            );
+
+            var chart = this.ecInit('chart-overview-trend');
+            if (!chart) return;
+            chart.setOption({
+                tooltip: {trigger: 'axis', order: 'valueDesc'},
+                legend: {data: posWithData, bottom: 0, textStyle: {fontSize: 10}},
+                grid: {left: 30, right: 50, top: 10, bottom: 30, containLabel: true},
+                xAxis: {
+                    type: 'category', data: years,
+                    boundaryGap: false,
+                    splitLine: {show: true, lineStyle: {type: 'dashed'}},
+                    axisLine: {show: false},
+                    axisTick: {show: false},
+                },
+                yAxis: {
+                    type: 'value',
+                    splitLine: {show: false},
+                    axisLine: {show: false},
+                    axisTick: {show: false},
+                    axisLabel: {show: false},
+                },
+                emphasis: {
+                    focus: 'series',
+                },
+                series: posWithData.map((p, i) => ({
+                    name: p,
+                    type: 'line',
+                    smooth: 0.6,
+                    symbol: 'circle',
+                    symbolSize: function(val) { return val === 0 ? 0 : 8; },
+                    data: years.map(y => byYear[y].by_position[p] || 0),
+                    lineStyle: {color: colors[i % colors.length], width: 3},
+                    itemStyle: {color: colors[i % colors.length]},
+                    emphasis: {
+                        focus: 'series',
+                        lineStyle: {width: 4},
+                    },
+                    blur: {
+                        lineStyle: {opacity: 0.2, width: 2},
+                        itemStyle: {opacity: 0.2},
+                    },
+                    endLabel: {
+                        show: true,
+                        formatter: '{a}',
+                        fontSize: 10,
+                        distance: 5,
+                    },
+                })),
+            });
+        },
+
+        renderOverviewPositionPieEC() {
+            var colors = ['#5E81AC','#81A1C1','#88C0D0','#8FBCBB','#A3BE8C','#EBCB8B','#D08770','#BF616A','#B48EAD'];
+            var byYear = this.overviewByYearForPositions;
+            var totals = {};
+            Object.values(byYear).forEach(y => {
+                Object.entries(y.by_position).forEach(([p, c]) => {
+                    totals[p] = (totals[p] || 0) + c;
+                });
+            });
+            var sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+
+            var chart = this.ecInit('chart-overview-pie');
+            if (!chart) return;
+            chart.setOption({
+                tooltip: {trigger: 'item', formatter: '{b}: {c} ({d}%)'},
+                series: [{
+                    type: 'pie',
+                    radius: ['35%', '65%'],
+                    center: ['50%', '50%'],
+                    data: sorted.map((e, i) => ({
+                        name: e[0], value: e[1],
+                        itemStyle: {color: colors[i % colors.length]},
+                    })),
+                    label: {formatter: '{b}\n{d}%', fontSize: 11},
+                    emphasis: {
+                        label: {show: true, fontSize: 13, fontWeight: 'bold'},
+                    },
+                }],
+            });
+        },
+
+        renderOverviewLeaguesEC() {
+            var colors = ['#5E81AC','#81A1C1','#88C0D0','#8FBCBB','#A3BE8C','#EBCB8B','#D08770','#BF616A','#B48EAD'];
+            var games = this.overviewGames.filter(g => {
+                if (this.onlyCompleted && g.date >= this.today) return false;
+                if (this.ovFilterPositions.length
+                    && !this.ovFilterPositions.includes(g.position)) return false;
+                if (this.ovYearFrom && g.year < this.ovYearFrom) return false;
+                if (this.ovYearTo && g.year > this.ovYearTo) return false;
+                return true;
+            });
+            if (!games.length) return;
+
+            var seenYears = new Set();
+            games.forEach(g => seenYears.add(g.year));
+            var years = [...seenYears].sort();
+
+            var leagueTotals = {};
+            games.forEach(g => { leagueTotals[g.league] = (leagueTotals[g.league] || 0) + 1; });
+            var leagues = Object.keys(leagueTotals).sort((a, b) => leagueTotals[b] - leagueTotals[a]);
+
+            var counts = {};
+            games.forEach(g => {
+                var key = g.league + '|' + g.year;
+                counts[key] = (counts[key] || 0) + 1;
+            });
+
+            var chart = this.ecInit('chart-overview-leagues');
+            if (!chart) return;
+            chart.setOption({
+                tooltip: {trigger: 'axis', axisPointer: {type: 'shadow'}},
+                legend: {data: years, bottom: 0, textStyle: {fontSize: 10}},
+                grid: {left: 10, right: 10, top: 10, bottom: 30, containLabel: true},
+                xAxis: {type: 'category', data: leagues, axisLabel: {rotate: -45, fontSize: 9}},
+                yAxis: {type: 'value'},
+                series: years.map((y, i) => ({
+                    name: y,
+                    type: 'bar',
+                    stack: 'total',
+                    data: leagues.map(lg => counts[lg + '|' + y] || 0),
+                    itemStyle: {color: colors[i % colors.length]},
+                })),
+            });
+        },
+
+        renderOverviewFeePerYearEC() {
+            var byYear = this.overviewByYear;
+            var years = this.overviewYears;
+            var fees = years.map(y => byYear[y] ? byYear[y].fee : 0);
+            var travels = years.map(y => byYear[y] ? byYear[y].travel : 0);
+            var totals = years.map((y, i) => fees[i] + travels[i]);
+
+            var chart = this.ecInit('chart-overview-fee');
+            if (!chart) return;
+            var series = [
+                {name: 'Pauschale', type: 'bar', stack: 'total', data: fees, itemStyle: {color: '#5E81AC'}},
+                {name: 'Fahrtkosten', type: 'bar', stack: 'total', data: travels, itemStyle: {color: '#88C0D0'}},
+            ];
+            series[series.length - 1].label = {
+                show: true, position: 'top', fontSize: 10,
+                formatter: function(params) { return Math.round(totals[params.dataIndex]) + ' €'; },
+            };
+            chart.setOption({
+                tooltip: {trigger: 'axis', axisPointer: {type: 'shadow'}, valueFormatter: v => Math.round(v) + ' €'},
+                legend: {data: ['Pauschale', 'Fahrtkosten'], bottom: 0, textStyle: {fontSize: 10}},
+                grid: {left: 50, right: 10, top: 30, bottom: 30, containLabel: true},
+                xAxis: {type: 'category', data: years},
+                yAxis: {type: 'value', axisLabel: {formatter: v => Math.round(v) + ' €'}},
+                series: series,
+            });
+        },
+
+        renderOverviewAvgPerGameEC() {
+            var byYear = this.overviewByYear;
+            var years = this.overviewYears;
+            var avgs = years.map(y => {
+                var d = byYear[y];
+                if (!d || d.count === 0) return 0;
+                return (d.fee + d.travel) / d.count;
+            });
+
+            var chart = this.ecInit('chart-overview-avg');
+            if (!chart) return;
+            chart.setOption({
+                tooltip: {trigger: 'axis', valueFormatter: v => v.toFixed(0) + ' €'},
+                grid: {left: 50, right: 10, top: 20, bottom: 10, containLabel: true},
+                xAxis: {type: 'category', data: years},
+                yAxis: {type: 'value', axisLabel: {formatter: v => v.toFixed(0) + ' €'}},
+                series: [{
+                    type: 'bar',
+                    data: avgs,
+                    itemStyle: {color: '#A3BE8C'},
+                    label: {show: true, position: 'top', fontSize: 10, formatter: p => p.value === 0 ? '' : p.value.toFixed(0) + ' €'},
+                }],
+            });
+        },
+
+        renderOverviewKmPerYearEC() {
+            var byYear = this.overviewByYear;
+            var years = this.overviewYears;
+            var kms = years.map(y => byYear[y] ? byYear[y].km : 0);
+
+            var chart = this.ecInit('chart-overview-km');
+            if (!chart) return;
+            chart.setOption({
+                tooltip: {trigger: 'axis', valueFormatter: v => v.toLocaleString('de-DE') + ' km'},
+                grid: {left: 50, right: 10, top: 20, bottom: 10, containLabel: true},
+                xAxis: {type: 'category', data: years},
+                yAxis: {type: 'value', axisLabel: {formatter: v => v.toLocaleString('de-DE')}},
+                series: [{
+                    type: 'bar',
+                    data: kms,
+                    itemStyle: {color: '#81A1C1'},
+                    label: {show: true, position: 'top', fontSize: 10, formatter: p => p.value === 0 ? '' : p.value.toLocaleString('de-DE')},
+                }],
+            });
+        },
+
+        renderOverviewRiverEC() {
+            var colors = ['#5E81AC','#81A1C1','#88C0D0','#8FBCBB','#A3BE8C','#EBCB8B','#D08770','#BF616A','#B48EAD'];
+            var games = this.overviewFiltered;
+            if (!games.length) return;
+
+            var years = this.overviewYears;
+            var positions = this.overviewPositions.filter(p =>
+                games.some(g => g.position === p)
+            );
+
+            // ThemeRiver data: [date, count, position]
+            var data = [];
+            var counts = {};
+            games.forEach(g => {
+                var key = g.year + '|' + g.position;
+                counts[key] = (counts[key] || 0) + 1;
+            });
+            years.forEach(y => {
+                positions.forEach(p => {
+                    data.push([y + '-07-01', counts[y + '|' + p] || 0, p]);
+                });
+            });
+
+            // Build totals per year for tooltip
+            var yearTotals = {};
+            years.forEach(y => {
+                var total = 0;
+                positions.forEach(p => { total += counts[y + '|' + p] || 0; });
+                yearTotals[y] = total;
+            });
+
+            var chart = this.ecInit('chart-overview-river', 300);
+            if (!chart) return;
+            chart.setOption({
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: {type: 'line'},
+                    formatter: function(params) {
+                        if (!params || !params.length) return '';
+                        var date = params[0].data[0];
+                        var year = date.substring(0, 4);
+                        var lines = ['<b>' + year + '</b> (Gesamt: ' + (yearTotals[year] || 0) + ')'];
+                        params.sort((a, b) => b.data[1] - a.data[1]);
+                        params.forEach(p => {
+                            if (p.data[1] > 0) {
+                                lines.push(p.marker + ' ' + p.data[2] + ': <b>' + p.data[1] + '</b>');
+                            }
+                        });
+                        return lines.join('<br>');
+                    },
+                },
+                legend: {
+                    data: positions,
+                    bottom: 0,
+                    textStyle: {fontSize: 10},
+                },
+                singleAxis: {
+                    type: 'time',
+                    bottom: 40,
+                    top: 20,
+                    axisLabel: {fontSize: 10, formatter: '{yyyy}'},
+                },
+                series: [{
+                    type: 'themeRiver',
+                    data: data,
+                    label: {
+                        show: true, fontSize: 10,
+                        formatter: function(params) {
+                            return params.data[1] > 0 ? params.data[2] : '';
+                        },
+                    },
+                    emphasis: {focus: 'self'},
+                    itemStyle: {
+                        color: function(params) {
+                            var idx = positions.indexOf(params.data[2]);
+                            return colors[idx >= 0 ? idx % colors.length : 0];
+                        },
+                    },
+                }],
+            });
+        },
+
+        renderOverviewSankeyEC() {
+            var colors = ['#5E81AC','#81A1C1','#88C0D0','#8FBCBB','#A3BE8C','#EBCB8B','#D08770','#BF616A','#B48EAD'];
+            var dark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+            var games = this.overviewFiltered;
+            if (!games.length) return;
+
+            var years = this.overviewYears;
+            // Use position sorter order (from API), filtered to those with data
+            var positions = this.overviewPositions.filter(p =>
+                games.some(g => g.position === p)
+            ).reverse(); // reverse so first position is at top in heatmap
+
+            var counts = {};
+            games.forEach(g => {
+                var key = g.position + '|' + g.year;
+                counts[key] = (counts[key] || 0) + 1;
+            });
+
+            // Heatmap data: [yearIdx, posIdx, count]
+            var heatData = [];
+            var max = 0;
+            positions.forEach((p, pi) => {
+                years.forEach((y, yi) => {
+                    var val = counts[p + '|' + y] || 0;
+                    heatData.push([yi, pi, val]);
+                    if (val > max) max = val;
+                });
+            });
+
+            var chart = this.ecInit('chart-overview-sankey', Math.max(300, positions.length * 45));
+            if (!chart) return;
+            chart.setOption({
+                tooltip: {
+                    formatter: function(params) {
+                        return positions[params.value[1]] + ' ' + years[params.value[0]] + ': ' + params.value[2] + ' Spiele';
+                    },
+                },
+                grid: {left: 50, right: 10, top: 10, bottom: 30, containLabel: true},
+                xAxis: {type: 'category', data: years, splitArea: {show: true}},
+                yAxis: {type: 'category', data: positions, splitArea: {show: true}},
+                visualMap: {
+                    min: 0, max: max || 1,
+                    calculable: true,
+                    orient: 'horizontal',
+                    left: 'center', bottom: 0,
+                    inRange: {
+                        color: ['#3B4252', '#5E81AC', '#88C0D0', '#D08770', '#BF616A'],
+                    },
+                    textStyle: {color: dark ? '#D8DEE9' : '#2E3440', fontSize: 10},
+                    show: false,
+                },
+                series: [{
+                    type: 'heatmap',
+                    data: heatData,
+                    label: {
+                        show: true,
+                        formatter: function(params) { return params.value[2] || ''; },
+                        fontSize: 11,
+                        color: '#ECEFF4',
+                        textBorderColor: '#2E3440',
+                        textBorderWidth: 2,
+                    },
+                    itemStyle: {
+                        borderColor: dark ? '#2E3440' : '#ECEFF4',
+                        borderWidth: 2,
+                        borderRadius: 3,
+                    },
+                }],
+            });
+        },
+
+        // --- Plotly Overview Charts ---
 
         renderOverviewGamesPerYear() {
             var colors = ['#5E81AC','#81A1C1','#88C0D0','#8FBCBB','#A3BE8C','#EBCB8B','#D08770','#BF616A','#B48EAD'];

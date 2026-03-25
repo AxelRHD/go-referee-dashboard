@@ -1208,6 +1208,33 @@ document.addEventListener('alpine:init', () => {
             });
         },
 
+        _majorCities: [
+            // Landeshauptstädte
+            {name: 'Berlin', lon: 13.405, lat: 52.520},
+            {name: 'München', lon: 11.582, lat: 48.135},
+            {name: 'Stuttgart', lon: 9.182, lat: 48.776},
+            {name: 'Düsseldorf', lon: 6.783, lat: 51.228},
+            {name: 'Wiesbaden', lon: 8.240, lat: 50.083},
+            {name: 'Hannover', lon: 9.732, lat: 52.375},
+            {name: 'Mainz', lon: 8.271, lat: 49.999},
+            {name: 'Kiel', lon: 10.139, lat: 54.323},
+            {name: 'Saarbrücken', lon: 6.997, lat: 49.234},
+            {name: 'Dresden', lon: 13.738, lat: 51.051},
+            {name: 'Magdeburg', lon: 11.632, lat: 52.131},
+            {name: 'Erfurt', lon: 11.030, lat: 50.985},
+            {name: 'Potsdam', lon: 13.066, lat: 52.396},
+            {name: 'Schwerin', lon: 11.417, lat: 53.636},
+            {name: 'Hamburg', lon: 9.993, lat: 53.551},
+            {name: 'Bremen', lon: 8.807, lat: 53.075},
+            // Große Metropolen
+            {name: 'Köln', lon: 6.960, lat: 50.938},
+            {name: 'Frankfurt', lon: 8.682, lat: 50.110},
+            {name: 'Dortmund', lon: 7.466, lat: 51.514},
+            {name: 'Essen', lon: 7.012, lat: 51.458},
+            {name: 'Leipzig', lon: 12.387, lat: 51.340},
+            {name: 'Nürnberg', lon: 11.078, lat: 49.454},
+        ],
+
         renderMapEC(chartId, games) {
             if (!this._germanyMapLoaded) return;
             var dark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
@@ -1310,6 +1337,7 @@ document.addEventListener('alpine:init', () => {
                     },
                 },
                 series: [{
+                    name: 'Venues',
                     type: 'scatter',
                     coordinateSystem: 'geo',
                     data: data,
@@ -1324,6 +1352,27 @@ document.addEventListener('alpine:init', () => {
                         fontSize: 10,
                         color: dark ? '#D8DEE9' : '#2E3440',
                     },
+                    z: 10,
+                }, {
+                    name: 'Städte',
+                    type: 'scatter',
+                    coordinateSystem: 'geo',
+                    data: this._majorCities.map(c => ({
+                        name: c.name,
+                        value: [c.lon, c.lat],
+                    })),
+                    symbol: 'circle',
+                    symbolSize: 4,
+                    itemStyle: {color: dark ? '#616E88' : '#9AA2AE', opacity: 0.9},
+                    label: {
+                        show: true,
+                        formatter: '{b}',
+                        position: 'bottom',
+                        fontSize: 10,
+                        color: dark ? '#616E88' : '#9AA2AE',
+                    },
+                    silent: true,
+                    z: 1,
                 }],
             });
         },

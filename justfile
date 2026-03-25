@@ -1,3 +1,5 @@
+set dotenv-load
+
 app_name := "referee-dashboard"
 bin_dir := "bin"
 bin_file := bin_dir / app_name
@@ -50,15 +52,36 @@ build:
 migrate:
     @go run ./cmd migrate
 
-# Seed initial data (positions)
-[group('db')]
-seed:
-    @go run ./cmd seed
-
 # Generate sqlc code
 [group('db')]
 generate:
     @sqlc generate
+
+# ============================================================
+# Seeding
+# ============================================================
+
+seed_dir := "db/seed"
+db_file := env("DB_PATH", "referee.db")
+
+# Export current positions, leagues, teams, venues as seed SQL
+[group('seeding')]
+dump-seed:
+    @sqlite3 {{db_file}} ".mode insert positions" ".output {{seed_dir}}/positions.sql" "SELECT * FROM positions ORDER BY sorter;"
+    @sqlite3 {{db_file}} ".mode insert leagues" ".output {{seed_dir}}/leagues.sql" "SELECT * FROM leagues ORDER BY sorter, name;"
+    @sqlite3 {{db_file}} ".mode insert teams" ".output {{seed_dir}}/teams.sql" "SELECT * FROM teams ORDER BY name;"
+    @sqlite3 {{db_file}} ".mode insert venues" ".output {{seed_dir}}/venues.sql" "SELECT * FROM venues ORDER BY short_name, city;"
+    @echo "Seed data exported to {{seed_dir}}/"
+
+# Import seed data (positions, leagues, teams, venues)
+[group('seeding')]
+[confirm("This will import seed data into the database. Continue?")]
+seed-data:
+    @sqlite3 {{db_file}} < {{seed_dir}}/positions.sql
+    @sqlite3 {{db_file}} < {{seed_dir}}/leagues.sql
+    @sqlite3 {{db_file}} < {{seed_dir}}/teams.sql
+    @sqlite3 {{db_file}} < {{seed_dir}}/venues.sql
+    @echo "Seed data imported."
 
 # ============================================================
 # Deployment

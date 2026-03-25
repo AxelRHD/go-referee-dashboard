@@ -7,10 +7,11 @@ import (
 )
 
 type VenueData struct {
-	City    string
-	Stadium string
-	Lat     float64
-	Lon     float64
+	City      string
+	Stadium   string
+	ShortName string
+	Lat       float64
+	Lon       float64
 }
 
 func ValidateVenue(form url.Values) (VenueData, map[string]string) {
@@ -18,6 +19,7 @@ func ValidateVenue(form url.Values) (VenueData, map[string]string) {
 
 	city := requireField(form, "city", "Stadt", errors)
 	stadium := optionalField(form, "stadium")
+	shortName := optionalField(form, "short_name")
 
 	var lat, lon float64
 	if raw := strings.TrimSpace(form.Get("lat")); raw != "" {
@@ -32,10 +34,11 @@ func ValidateVenue(form url.Values) (VenueData, map[string]string) {
 	}
 
 	data := VenueData{
-		City:    city,
-		Stadium: stadium,
-		Lat:     lat,
-		Lon:     lon,
+		City:      city,
+		Stadium:   stadium,
+		ShortName: shortName,
+		Lat:       lat,
+		Lon:       lon,
 	}
 
 	return data, errors

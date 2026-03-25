@@ -72,10 +72,11 @@ func (vh *VenueHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err := vh.q.CreateVenue(r.Context(), model.CreateVenueParams{
-		City:    data.City,
-		Stadium: data.Stadium,
-		Lat:     data.Lat,
-		Lon:     data.Lon,
+		City:      data.City,
+		Stadium:   data.Stadium,
+		ShortName: data.ShortName,
+		Lat:       data.Lat,
+		Lon:       data.Lon,
 	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -114,11 +115,12 @@ func (vh *VenueHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = vh.q.UpdateVenue(r.Context(), model.UpdateVenueParams{
-		ID:      venue.ID,
-		City:    data.City,
-		Stadium: data.Stadium,
-		Lat:     data.Lat,
-		Lon:     data.Lon,
+		ID:        venue.ID,
+		City:      data.City,
+		Stadium:   data.Stadium,
+		ShortName: data.ShortName,
+		Lat:       data.Lat,
+		Lon:       data.Lon,
 	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -219,7 +221,7 @@ func (vh *VenueHandler) ExportCSV(w http.ResponseWriter, r *http.Request) {
 
 	cw := csv.NewWriter(w)
 	cw.Comma = ';'
-	cw.Write([]string{"Stadt", "Stadion", "Lat", "Lon"})
+	cw.Write([]string{"Kürzel", "Stadt", "Stadion", "Lat", "Lon"})
 
 	for _, v := range venues {
 		lat := ""
@@ -230,7 +232,7 @@ func (vh *VenueHandler) ExportCSV(w http.ResponseWriter, r *http.Request) {
 		if v.Lon != 0 {
 			lon = fmt.Sprintf("%f", v.Lon)
 		}
-		cw.Write([]string{v.City, v.Stadium, lat, lon})
+		cw.Write([]string{v.ShortName, v.City, v.Stadium, lat, lon})
 	}
 	cw.Flush()
 }
@@ -246,8 +248,8 @@ func (vh *VenueHandler) ExportSQL(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", exportFilename("spielorte", "sql"))
 
 	for _, v := range venues {
-		fmt.Fprintf(w, "INSERT INTO venues (city, stadium, lat, lon) VALUES (%s, %s, %f, %f);\n",
-			sqlEscape(v.City), sqlEscape(v.Stadium), v.Lat, v.Lon)
+		fmt.Fprintf(w, "INSERT INTO venues (city, stadium, short_name, lat, lon) VALUES (%s, %s, %s, %f, %f);\n",
+			sqlEscape(v.City), sqlEscape(v.Stadium), sqlEscape(v.ShortName), v.Lat, v.Lon)
 	}
 }
 

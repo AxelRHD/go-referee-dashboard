@@ -13,8 +13,9 @@ const createGame = `-- name: CreateGame :one
 INSERT INTO games (
     game_date, game_time, home_team_id, away_team_id, venue_id,
     league_id, position, referee_fee, travel_costs, km_driven,
-    exhibition, remarks
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    exhibition, remarks, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+    datetime('now', 'localtime'), datetime('now', 'localtime'))
 RETURNING id, game_date, game_time, home_team_id, away_team_id, venue_id, league_id, position, referee_fee, travel_costs, km_driven, exhibition, remarks, created_at, updated_at
 `
 
@@ -231,7 +232,7 @@ UPDATE games
 SET game_date = ?, game_time = ?, home_team_id = ?, away_team_id = ?,
     venue_id = ?, league_id = ?, position = ?, referee_fee = ?,
     travel_costs = ?, km_driven = ?, exhibition = ?, remarks = ?,
-    updated_at = datetime('now')
+    updated_at = datetime('now', 'localtime')
 WHERE id = ?
 `
 

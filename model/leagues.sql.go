@@ -10,8 +10,8 @@ import (
 )
 
 const createLeague = `-- name: CreateLeague :one
-INSERT INTO leagues (name, short_name, sorter, remarks)
-VALUES (?, ?, ?, ?)
+INSERT INTO leagues (name, short_name, sorter, remarks, created_at, updated_at)
+VALUES (?, ?, ?, ?, datetime('now', 'localtime'), datetime('now', 'localtime'))
 RETURNING id, name, short_name, sorter, remarks, created_at, updated_at
 `
 
@@ -111,7 +111,7 @@ func (q *Queries) ListLeagues(ctx context.Context) ([]League, error) {
 
 const updateLeague = `-- name: UpdateLeague :exec
 UPDATE leagues
-SET name = ?, short_name = ?, sorter = ?, remarks = ?, updated_at = datetime('now')
+SET name = ?, short_name = ?, sorter = ?, remarks = ?, updated_at = datetime('now', 'localtime')
 WHERE id = ?
 `
 

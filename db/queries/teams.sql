@@ -9,13 +9,13 @@ FROM teams
 WHERE id = ?;
 
 -- name: CreateTeam :one
-INSERT INTO teams (name, state, is_active, remarks)
-VALUES (?, ?, ?, ?)
+INSERT INTO teams (name, state, is_active, remarks, created_at, updated_at)
+VALUES (?, ?, ?, ?, datetime('now', 'localtime'), datetime('now', 'localtime'))
 RETURNING *;
 
 -- name: UpdateTeam :exec
 UPDATE teams
-SET name = ?, state = ?, is_active = ?, remarks = ?, updated_at = datetime('now')
+SET name = ?, state = ?, is_active = ?, remarks = ?, updated_at = datetime('now', 'localtime')
 WHERE id = ?;
 
 -- name: DeleteTeam :exec

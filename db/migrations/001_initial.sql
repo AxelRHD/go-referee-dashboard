@@ -12,8 +12,8 @@ CREATE TABLE IF NOT EXISTS leagues (
     short_name TEXT    NOT NULL DEFAULT '',
     sorter     INTEGER NOT NULL DEFAULT 0,
     remarks    TEXT    NOT NULL DEFAULT '',
-    created_at TEXT    NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT    NOT NULL DEFAULT (datetime('now'))
+    created_at TEXT    NOT NULL DEFAULT (datetime('now', 'localtime')),
+    updated_at TEXT    NOT NULL DEFAULT (datetime('now', 'localtime'))
 );
 
 CREATE TABLE IF NOT EXISTS teams (
@@ -22,18 +22,19 @@ CREATE TABLE IF NOT EXISTS teams (
     state      TEXT    NOT NULL DEFAULT 'Baden-Württemberg',
     is_active  INTEGER NOT NULL DEFAULT 1,
     remarks    TEXT    NOT NULL DEFAULT '',
-    created_at TEXT    NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT    NOT NULL DEFAULT (datetime('now'))
+    created_at TEXT    NOT NULL DEFAULT (datetime('now', 'localtime')),
+    updated_at TEXT    NOT NULL DEFAULT (datetime('now', 'localtime'))
 );
 
 CREATE TABLE IF NOT EXISTS venues (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     city       TEXT    NOT NULL,
+    short_name TEXT    NOT NULL DEFAULT '',
     stadium    TEXT    NOT NULL DEFAULT '',
     lat        REAL    NOT NULL DEFAULT 0.0,
     lon        REAL    NOT NULL DEFAULT 0.0,
-    created_at TEXT    NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT    NOT NULL DEFAULT (datetime('now'))
+    created_at TEXT    NOT NULL DEFAULT (datetime('now', 'localtime')),
+    updated_at TEXT    NOT NULL DEFAULT (datetime('now', 'localtime'))
 );
 
 CREATE TABLE IF NOT EXISTS games (
@@ -50,8 +51,8 @@ CREATE TABLE IF NOT EXISTS games (
     km_driven     INTEGER NOT NULL DEFAULT 0,
     exhibition    INTEGER NOT NULL DEFAULT 0,
     remarks       TEXT    NOT NULL DEFAULT '',
-    created_at    TEXT    NOT NULL DEFAULT (datetime('now')),
-    updated_at    TEXT    NOT NULL DEFAULT (datetime('now'))
+    created_at    TEXT    NOT NULL DEFAULT (datetime('now', 'localtime')),
+    updated_at    TEXT    NOT NULL DEFAULT (datetime('now', 'localtime'))
 );
 
 -- +goose Down

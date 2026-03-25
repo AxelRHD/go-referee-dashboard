@@ -24,7 +24,6 @@ func App(cfg config.Config, newServer ServerFunc, version string) *cli.Command {
 		Commands: []*cli.Command{
 			serveCmd(cfg, newServer),
 			migrateCmd(cfg),
-			seedCmd(cfg),
 			healthCmd(cfg),
 		},
 	}
@@ -41,9 +40,6 @@ func serveCmd(cfg config.Config, newServer ServerFunc) *cli.Command {
 			}
 			if err := runMigrations(conn); err != nil {
 				return fmt.Errorf("auto-migrate: %w", err)
-			}
-			if err := seedPositions(conn); err != nil {
-				return fmt.Errorf("auto-seed: %w", err)
 			}
 			conn.Close()
 
@@ -66,21 +62,6 @@ func migrateCmd(cfg config.Config) *cli.Command {
 			}
 			defer conn.Close()
 			return runMigrations(conn)
-		},
-	}
-}
-
-func seedCmd(cfg config.Config) *cli.Command {
-	return &cli.Command{
-		Name:  "seed",
-		Usage: "Seed initial data (positions)",
-		Action: func(ctx context.Context, cmd *cli.Command) error {
-			conn, err := openDB(cfg.DBPath)
-			if err != nil {
-				return err
-			}
-			defer conn.Close()
-			return seedPositions(conn)
 		},
 	}
 }
@@ -117,41 +98,3 @@ func runMigrations(conn *sql.DB) error {
 	return goose.Up(conn, "migrations")
 }
 
-func seedPositions(conn *sql.DB) error {
-	positions := []struct {
-		Position string
-		Long     string
-		Sorter   int
-	}{
-		{"R", "Referee", 10},
-		{"CJ", "Center Judge", 20},
-		{"U", "Umpire", 30},
-		{"LJ", "Line Judge", 40},
-		{"LM", "Linesman", 50},
-		{"BJ", "Back Judge", 60},
-		{"FJ", "Field Judge", 70},
-		{"SJ", "Side Judge", 80},
-	}
-
-	for _, p := range positions {
-		_, err := conn.Exec(
-			`INSERT OR IGNORE INTO positions (position, long, sorter) VALUES (?, ?, ?)`,
-			p.Position, p.Long, p.Sorter,
-		)
-		if err != nil {
-			return fmt.Errorf("seed position %s: %w", p.Position, err)
-		}
-	}
-
-	log.Printf("seeded %d positions", len(positions))
-
-	// Seed placeholder venue (id=0) for games without a venue
-	_, err := conn.Exec(
-		`INSERT OR IGNORE INTO venues (id, city, stadium) VALUES (0, 'Unbekannt', '#NV')`,
-	)
-	if err != nil {
-		return fmt.Errorf("seed unknown venue: %w", err)
-	}
-
-	return nil
-}

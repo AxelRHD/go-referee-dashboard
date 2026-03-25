@@ -51,6 +51,7 @@ type Team struct {
 type Venue struct {
 	ID        int64
 	City      string
+	ShortName string
 	Stadium   string
 	Lat       float64
 	Lon       float64

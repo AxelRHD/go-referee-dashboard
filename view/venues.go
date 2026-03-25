@@ -22,6 +22,7 @@ func VenueList(w http.ResponseWriter, r *http.Request, venues []model.Venue) g.N
 			lon = fmt.Sprintf("%.4f", v.Lon)
 		}
 		rows = append(rows, h.Tr(
+			h.Td(g.Text(v.ShortName)),
 			h.Td(g.Text(v.City)),
 			h.Td(g.Text(v.Stadium)),
 			h.Td(h.Class("text-muted"), g.Text(lat)),
@@ -46,7 +47,7 @@ func VenueList(w http.ResponseWriter, r *http.Request, venues []model.Venue) g.N
 			),
 		),
 		DataTable(
-			[]string{"Stadt", "Stadion", "Lat", "Lon", "Aktionen"},
+			[]string{"Kürzel", "Stadt", "Stadion", "Lat", "Lon", "Aktionen"},
 			rows,
 		),
 	)
@@ -74,6 +75,8 @@ func VenueForm(venue *model.Venue, errors map[string]string, data map[string]str
 			return venue.City
 		case "stadium":
 			return venue.Stadium
+		case "short_name":
+			return venue.ShortName
 		case "lat":
 			if venue.Lat != 0 {
 				return fmt.Sprintf("%.6f", venue.Lat)
@@ -133,6 +136,7 @@ func VenueForm(venue *model.Venue, errors map[string]string, data map[string]str
 			FormRow(
 				FormField("Stadt", cityInput, errFor("city")),
 				FormField("Stadion", stadiumInput, ""),
+				FormField("Kürzel", TextInput("short_name", val("short_name"), false, ""), ""),
 			),
 			FormRow(
 				FormField("Lat", latInput, ""),

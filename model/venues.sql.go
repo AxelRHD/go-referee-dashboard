@@ -10,22 +10,24 @@ import (
 )
 
 const createVenue = `-- name: CreateVenue :one
-INSERT INTO venues (city, stadium, lat, lon)
-VALUES (?, ?, ?, ?)
-RETURNING id, city, stadium, lat, lon, created_at, updated_at
+INSERT INTO venues (city, stadium, short_name, lat, lon, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, datetime('now', 'localtime'), datetime('now', 'localtime'))
+RETURNING id, city, short_name, stadium, lat, lon, created_at, updated_at
 `
 
 type CreateVenueParams struct {
-	City    string
-	Stadium string
-	Lat     float64
-	Lon     float64
+	City      string
+	Stadium   string
+	ShortName string
+	Lat       float64
+	Lon       float64
 }
 
 func (q *Queries) CreateVenue(ctx context.Context, arg CreateVenueParams) (Venue, error) {
 	row := q.db.QueryRowContext(ctx, createVenue,
 		arg.City,
 		arg.Stadium,
+		arg.ShortName,
 		arg.Lat,
 		arg.Lon,
 	)
@@ -33,6 +35,7 @@ func (q *Queries) CreateVenue(ctx context.Context, arg CreateVenueParams) (Venue
 	err := row.Scan(
 		&i.ID,
 		&i.City,
+		&i.ShortName,
 		&i.Stadium,
 		&i.Lat,
 		&i.Lon,
@@ -52,9 +55,7 @@ func (q *Queries) DeleteVenue(ctx context.Context, id int64) error {
 }
 
 const getVenue = `-- name: GetVenue :one
-SELECT id, city, stadium, lat, lon, created_at, updated_at
-FROM venues
-WHERE id = ?
+SELECT id, city, short_name, stadium, lat, lon, created_at, updated_at FROM venues WHERE id = ?
 `
 
 func (q *Queries) GetVenue(ctx context.Context, id int64) (Venue, error) {
@@ -63,6 +64,7 @@ func (q *Queries) GetVenue(ctx context.Context, id int64) (Venue, error) {
 	err := row.Scan(
 		&i.ID,
 		&i.City,
+		&i.ShortName,
 		&i.Stadium,
 		&i.Lat,
 		&i.Lon,
@@ -73,9 +75,7 @@ func (q *Queries) GetVenue(ctx context.Context, id int64) (Venue, error) {
 }
 
 const listVenues = `-- name: ListVenues :many
-SELECT id, city, stadium, lat, lon, created_at, updated_at
-FROM venues
-ORDER BY city
+SELECT id, city, short_name, stadium, lat, lon, created_at, updated_at FROM venues ORDER BY short_name, city
 `
 
 func (q *Queries) ListVenues(ctx context.Context) ([]Venue, error) {
@@ -90,6 +90,7 @@ func (q *Queries) ListVenues(ctx context.Context) ([]Venue, error) {
 		if err := rows.Scan(
 			&i.ID,
 			&i.City,
+			&i.ShortName,
 			&i.Stadium,
 			&i.Lat,
 			&i.Lon,
@@ -111,22 +112,24 @@ func (q *Queries) ListVenues(ctx context.Context) ([]Venue, error) {
 
 const updateVenue = `-- name: UpdateVenue :exec
 UPDATE venues
-SET city = ?, stadium = ?, lat = ?, lon = ?, updated_at = datetime('now')
+SET city = ?, stadium = ?, short_name = ?, lat = ?, lon = ?, updated_at = datetime('now', 'localtime')
 WHERE id = ?
 `
 
 type UpdateVenueParams struct {
-	City    string
-	Stadium string
-	Lat     float64
-	Lon     float64
-	ID      int64
+	City      string
+	Stadium   string
+	ShortName string
+	Lat       float64
+	Lon       float64
+	ID        int64
 }
 
 func (q *Queries) UpdateVenue(ctx context.Context, arg UpdateVenueParams) error {
 	_, err := q.db.ExecContext(ctx, updateVenue,
 		arg.City,
 		arg.Stadium,
+		arg.ShortName,
 		arg.Lat,
 		arg.Lon,
 		arg.ID,
@@ -136,7 +139,7 @@ func (q *Queries) UpdateVenue(ctx context.Context, arg UpdateVenueParams) error 
 
 const updateVenueCoords = `-- name: UpdateVenueCoords :exec
 UPDATE venues
-SET lat = ?, lon = ?, updated_at = datetime('now')
+SET lat = ?, lon = ?, updated_at = datetime('now', 'localtime')
 WHERE id = ?
 `
 

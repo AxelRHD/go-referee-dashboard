@@ -81,9 +81,15 @@ func (dh *DashboardHandler) APIOverview(w http.ResponseWriter, r *http.Request) 
 		})
 	}
 
+	gamePosSet := map[string]bool{}
+	for _, g := range games {
+		gamePosSet[g.Position] = true
+	}
 	posNames := make([]string, 0, len(positions))
 	for _, p := range positions {
-		posNames = append(posNames, p.Position)
+		if gamePosSet[p.Position] {
+			posNames = append(posNames, p.Position)
+		}
 	}
 
 	type leagueJSON struct {

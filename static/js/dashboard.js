@@ -151,6 +151,12 @@ document.addEventListener('alpine:init', () => {
         _germanyMapLoaded: false,
         init() {
             this.setupEChartsResize();
+            // Force reload if requested (clears cached overview data)
+            if (new URLSearchParams(window.location.search).has('reload')) {
+                this.overviewLoaded = false;
+                this._seasonLoaded = false;
+                history.replaceState(null, '', '/dashboard/');
+            }
             // Load Germany GeoJSON for ECharts
             if (!this._germanyMapLoaded && typeof echarts !== 'undefined') {
                 fetch('/static/js/germany.geo.json')

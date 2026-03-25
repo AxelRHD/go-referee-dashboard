@@ -35,6 +35,17 @@ func DataPageWithMessages(w http.ResponseWriter, r *http.Request, messages []str
 				),
 			),
 		),
+		// Cache refresh
+		h.Div(h.Class("card mb-4"),
+			h.Div(h.Class("card-body"),
+				h.H5(h.Class("card-title"), g.Text("Dashboard")),
+				h.P(h.Class("text-muted"), g.Text("Dashboard-Daten werden beim Laden gecacht. Nach Änderungen an Spielen, Teams oder Ligen hier den Cache leeren.")),
+				h.A(h.Class("btn btn-outline-secondary"), g.Attr("href", "/dashboard/?reload=1"),
+					h.I(h.Class("bi bi-arrow-clockwise me-1")),
+					g.Text("Dashboard-Cache leeren"),
+				),
+			),
+		),
 		// File import
 		h.Div(h.Class("card mb-4"),
 			h.Div(h.Class("card-body"),

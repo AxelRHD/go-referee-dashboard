@@ -64,13 +64,13 @@ generate:
 seed_dir := "db/seed"
 db_file := env("DB_PATH", "referee.db")
 
-# Export current positions, leagues, teams, venues as seed SQL
+# Export current positions, leagues, teams, venues as seed SQL (without IDs/timestamps)
 [group('seeding')]
 dump-seed:
-    @sqlite3 {{db_file}} ".mode insert positions" ".output {{seed_dir}}/positions.sql" "SELECT * FROM positions ORDER BY sorter;"
-    @sqlite3 {{db_file}} ".mode insert leagues" ".output {{seed_dir}}/leagues.sql" "SELECT * FROM leagues ORDER BY sorter, name;"
-    @sqlite3 {{db_file}} ".mode insert teams" ".output {{seed_dir}}/teams.sql" "SELECT * FROM teams ORDER BY name;"
-    @sqlite3 {{db_file}} ".mode insert venues" ".output {{seed_dir}}/venues.sql" "SELECT * FROM venues ORDER BY short_name, city;"
+    @sqlite3 {{db_file}} ".mode insert positions" ".output {{seed_dir}}/positions.sql" "SELECT position, long, sorter FROM positions ORDER BY sorter;"
+    @sqlite3 {{db_file}} ".mode insert leagues" ".output {{seed_dir}}/leagues.sql" "SELECT name, short_name, sorter, remarks FROM leagues ORDER BY sorter, name;"
+    @sqlite3 {{db_file}} ".mode insert teams" ".output {{seed_dir}}/teams.sql" "SELECT name, state, is_active, remarks FROM teams ORDER BY name;"
+    @sqlite3 {{db_file}} ".mode insert venues" ".output {{seed_dir}}/venues.sql" "SELECT city, short_name, stadium, lat, lon FROM venues WHERE id > 0 ORDER BY short_name, city;"
     @echo "Seed data exported to {{seed_dir}}/"
 
 # Import seed data (positions, leagues, teams, venues)

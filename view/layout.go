@@ -42,6 +42,8 @@ func basePage(pageTitle, container string, content ...g.Node) g.Node {
 			h.Script(g.Attr("src", "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js")),
 			h.Script(g.Attr("src", "https://cdn.jsdelivr.net/npm/htmx.org@2/dist/htmx.min.js")),
 			h.Script(g.Attr("src", "https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2/plotly.min.js")),
+			h.Script(g.Attr("src", "https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js")),
+			h.Script(g.Attr("src", "/static/js/echarts-nord.js")),
 			h.Script(g.Raw(`
 document.addEventListener('alpine:init',()=>{
     Alpine.data('themeToggle',()=>({
@@ -55,6 +57,8 @@ document.addEventListener('alpine:init',()=>{
         }
     }));
 });`)),
+			// Dashboard Alpine.js component (before Alpine, after Plotly/ECharts)
+			h.Script(g.Attr("src", "/static/js/dashboard.js")),
 			h.Script(g.Attr("src", "https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js")),
 		},
 	})

@@ -12,37 +12,35 @@ import (
 	"github.com/chromedp/chromedp"
 )
 
-// JS to redact sensitive financial data before screenshot
+// JS to redact sensitive financial data before screenshot using blur
 const redactJS = `
 (function() {
-    var colors = ['#5E81AC','#A3BE8C','#D08770','#88C0D0','#B48EAD','#EBCB8B','#BF616A','#81A1C1'];
-    var ci = 0;
-    function nextColor() { return colors[ci++ % colors.length]; }
-
-    function redactEl(el) {
-        var rect = el.getBoundingClientRect();
-        if (rect.width < 5 || rect.height < 5) return;
-        var overlay = document.createElement('div');
-        overlay.style.cssText = 'position:absolute;left:'+rect.left+'px;top:'+rect.top+'px;width:'+rect.width+'px;height:'+rect.height+'px;background:'+nextColor()+';border-radius:3px;z-index:9999;';
-        document.body.appendChild(overlay);
+    function blurEl(el) {
+        el.style.filter = 'blur(6px)';
+        el.style.userSelect = 'none';
     }
 
-    // Redact EUR amounts and financial numbers in table cells
+    // Blur EUR amounts and financial numbers in table cells
     document.querySelectorAll('td').forEach(el => {
-        if (/[\d.,]+\s*€/.test(el.textContent)) redactEl(el);
+        if (/[\d.,]+\s*€/.test(el.textContent)) blurEl(el);
     });
 
-    // Redact stat card values (fw-bold with numbers or EUR)
+    // Blur stat card values (fw-bold with numbers or EUR)
     document.querySelectorAll('.fw-bold').forEach(el => {
         var text = el.textContent.trim();
         if (/[\d.,]+\s*€/.test(text) || /^\d[\d.,]*$/.test(text) || /[\d,]+\s*ct/.test(text)) {
-            redactEl(el);
+            blurEl(el);
         }
     });
 
-    // Redact Vergütung chart containers (fee charts show EUR)
-    document.querySelectorAll('[id^="chart-fee"]').forEach(el => {
-        el.style.filter = 'blur(8px)';
+    // Blur all fee/vergütung chart containers
+    document.querySelectorAll('[id^="chart-fee"], [id*="-fee"], [id*="-avg"], [id*="-km"]').forEach(el => {
+        el.style.filter = 'blur(6px)';
+    });
+
+    // Blur sidebar stat cards in dashboard
+    document.querySelectorAll('.card-body.py-2.px-3 .fw-bold').forEach(el => {
+        blurEl(el);
     });
 })();
 `

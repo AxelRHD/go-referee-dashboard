@@ -14,17 +14,18 @@
 
 - **Game Management** — Track games with date, teams, venue, league, position, fees, and travel costs
 - **Team & League Management** — Maintain teams (with Bundesland) and leagues with sorting
-- **Venue Management** — Manage venues with Photon geocoding (komoot)
-- **Dashboard** — Multi-year overview with interactive Plotly.js charts, filters, and statistics
+- **Venue Management** — Manage venues with short names and Photon geocoding (komoot)
+- **Dashboard** — Interactive ECharts visualizations with year and multi-year overview, calendar heatmap, geo map, ThemeRiver, bump charts
 - **Import / Export** — CSV and SQL export per entity, SQLite dump, file upload and direct paste import
-- **Form Validation** — Server-side validation with inline error messages
+- **Setup Wizard** — First-start setup page with seed data import, backup restore, or empty database
+- **Form Validation** — Server-side validation with inline error messages (German)
 - **Dark / Light Mode** — Nord theme with persistent toggle (localStorage)
 - **Healthcheck** — `/health` endpoint + CLI health command for Docker monitoring
-- **Auto-Migration** — Database schema and seed data applied automatically on startup
+- **Auto-Migration** — Database schema applied automatically on startup
 
 ## Screenshots
 
-### Dashboard
+### Dashboard (Year View)
 ![Dashboard](docs/screenshot-dashboard.png)
 
 ### Multi-Year Overview
@@ -45,13 +46,14 @@
 |-------|-----------|
 | Backend | Go 1.26, chi v5 |
 | Frontend | gomponents (HTML generation), Bootstrap 5.3, Bootstrap Icons |
-| Interactivity | htmx, Alpine.js, Plotly.js |
+| Charts | Apache ECharts 5 (geo map, bar, line, pie, heatmap, treemap, ThemeRiver) |
+| Interactivity | htmx, Alpine.js |
 | Database | SQLite via modernc.org/sqlite (pure Go, no CGO) |
-| Schema | goose (migrations) + sqlc (type-safe queries) |
+| Schema | goose (migrations, embedded) + sqlc (type-safe queries) |
 | Config | envconfig + godotenv |
 | CLI | urfave/cli v3 |
 | Deployment | Docker (FROM scratch), gosctl, just |
-| Theme | Nord color palette |
+| Theme | Nord color palette (dark + light) |
 
 **No npm, no build step, no templates** — HTML is generated server-side with [gomponents](https://maragu.dev/gomponents), assets loaded via CDN.
 
@@ -66,8 +68,8 @@
 
 ```bash
 # Clone the repository
-git clone git@github.com:AxelRHD/referee-dashboard.git
-cd referee-dashboard
+git clone git@github.com:AxelRHD/go-referee-dashboard.git
+cd go-referee-dashboard
 
 # Start development server (with hot-reload)
 just dev
@@ -78,7 +80,15 @@ go run ./cmd serve
 
 The app will be available at [http://localhost:3000](http://localhost:3000).
 
-On first start, the database is created automatically with seeded referee positions (R, CJ, U, LJ, LM, BJ, FJ, SJ) and a placeholder venue.
+### First Start — Setup Wizard
+
+On first start with an empty database, the app redirects to `/setup` where you can choose:
+
+1. **Neues Setup** — Import seed data (positions, leagues, teams, venues) via checkboxes. Ideal for a fresh start.
+2. **Wiederherstellung** — Restore from a complete SQL dump (file upload or paste). Use this to restore a backup from your own database.
+3. **Leere Datenbank** — Skip seeding, start with empty tables. Data can be added manually or imported later via `/data`.
+
+After setup, the app redirects to the dashboard.
 
 ## Configuration
 
@@ -117,8 +127,14 @@ just --list
 | Recipe | Description |
 |--------|-------------|
 | `just migrate` | Run goose migrations |
-| `just seed` | Seed positions + placeholder venue |
 | `just generate` | Generate sqlc code from queries |
+
+### Seeding
+
+| Recipe | Description |
+|--------|-------------|
+| `just dump-seed` | Export current positions, leagues, teams, venues to `db/seed/` |
+| `just seed-data` | Import seed data from `db/seed/` into the database (with confirmation) |
 
 ### Deployment
 
@@ -151,6 +167,7 @@ Local (WSL)                          Server (e.g. OMV)
 - **Docker image** is a single static binary + static assets (~15 MB)
 - **Database** persists in the appdata volume
 - **Migrations** run automatically on startup (embedded in binary)
+- **Seed data** embedded in binary, available via setup wizard
 - **Container lifecycle** managed via OMV Docker UI
 
 ### Docker Compose
@@ -182,25 +199,25 @@ services:
 The app displays its version in the navbar, derived from git tags:
 
 ```bash
-git tag v0.2.0
+git tag v0.3.0
 just deploy
 ```
 
-- Tagged commit → `v0.2.0`
-- After commits → `v0.2.0-1-gabcdef`
+- Tagged commit → `v0.3.0`
+- After commits → `v0.3.0-1-gabcdef`
 
 ## Data Management
 
 ### Export
 
-Each list page (Games, Teams, Leagues, Venues) offers CSV and SQL export buttons with timestamps. The data management page (`/data`) provides:
+Each list page (Games, Teams, Leagues, Venues) offers CSV and SQL export buttons with timestamps in the filename. The data management page (`/data`) provides:
 
-- **SQLite Dump** — Complete backup with schema and data
-- **All Data Export** — INSERT statements for all tables in FK order
+- **SQLite Dump** — Complete backup with schema and data (timestamped)
+- **All Data Export** — INSERT statements for all tables in FK order (timestamped)
 
 ### Import
 
-- **SQL** — Paste or upload INSERT/CREATE TABLE statements (DROP, DELETE, UPDATE are blocked)
+- **SQL** — Paste or upload INSERT/CREATE TABLE statements (DROP, DELETE, UPDATE are blocked for safety)
 - **CSV** — Upload or paste CSV data with German headers, auto-resolves team/league names to IDs
 
 CSV format uses semicolons (`;`) as delimiters and UTF-8 with BOM for Excel compatibility.
@@ -209,7 +226,7 @@ CSV format uses semicolons (`;`) as delimiters and UTF-8 with BOM for Excel comp
 
 ```
 cmd/main.go              # Entry point (config + CLI)
-cli/cli.go               # urfave/cli v3 (serve, migrate, seed, health)
+cli/cli.go               # urfave/cli v3 (serve, migrate, health)
 server/server.go         # chi router, middleware, route registration
 config/config.go         # envconfig + godotenv
 handler/                 # HTTP handlers per module
@@ -219,9 +236,17 @@ validation/              # Form validation
 db/
 ├── embed.go             # Embedded migrations (go:embed)
 ├── migrations/          # Goose SQL migration files
-└── queries/             # sqlc SQL query files
+├── queries/             # sqlc SQL query files
+└── seed/                # Seed SQL files (embedded via go:embed)
+    ├── positions.sql
+    ├── leagues.sql
+    ├── teams.sql
+    └── venues.sql
 static/
 ├── css/nord.css         # Nord theme overrides
+├── js/dashboard.js      # Alpine.js dashboard component
+├── js/echarts-nord.js   # ECharts Nord theme (dark + light)
+├── js/germany.geo.json  # Germany GeoJSON for ECharts map
 └── pfeife.png           # App icon
 scripts/
 └── screenshots.go       # Automated screenshot generation (chromedp)
@@ -229,10 +254,10 @@ scripts/
 
 ## Screenshots Generation
 
-Screenshots are generated automatically with chromedp:
+Screenshots are generated automatically with chromedp. Financial data is automatically blurred.
 
 ```bash
-# Requires chromium-browser in PATH
+# Requires chromium-browser in PATH and a running server
 go run scripts/screenshots.go [base-url]
 ```
 

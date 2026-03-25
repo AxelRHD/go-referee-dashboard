@@ -13,7 +13,6 @@ document.addEventListener('alpine:init', () => {
         showRecentGames: localStorage.getItem('db_showRecentGames') === 'true',
         recentGamesLimit: localStorage.getItem('db_recentGamesLimit') || '10',
         today: new Date().toISOString().slice(0, 10),
-        chartLib: localStorage.getItem('db_chartLib') || 'plotly',
 
         togglePosition(arr, p) {
             var i = arr.indexOf(p);
@@ -163,12 +162,12 @@ document.addEventListener('alpine:init', () => {
                         this.$nextTick(() => {
                             if (this.chartLib === 'echarts') {
                                 if (this.games.length) {
-                                    this.renderMapEC('chart-map', this.filtered);
-                                    this.renderVenueTopEC('chart-venues-top', this.filtered);
+                                    this.renderMap('chart-map', this.filtered);
+                                    this.renderVenueTop('chart-venues-top', this.filtered);
                                 }
                                 if (this.view === 'overview' && this.overviewLoaded) {
-                                    this.renderMapEC('chart-overview-map', this.overviewFiltered);
-                                    this.renderVenueTopEC('chart-overview-venues-top', this.overviewFiltered);
+                                    this.renderMap('chart-overview-map', this.overviewFiltered);
+                                    this.renderVenueTop('chart-overview-venues-top', this.overviewFiltered);
                                 }
                             }
                         });
@@ -238,14 +237,6 @@ document.addEventListener('alpine:init', () => {
                     });
                 }
             });
-            this.$watch('chartLib', (v) => {
-                localStorage.setItem('db_chartLib', v);
-                this.disposeECharts();
-                this.$nextTick(() => {
-                    this.renderCharts();
-                    if (this.view === 'overview') this.renderOverviewCharts();
-                });
-            });
             window.addEventListener('theme-changed', () => {
                 this.disposeECharts();
                 this.$nextTick(() => {
@@ -274,21 +265,15 @@ document.addEventListener('alpine:init', () => {
         },
 
         renderCharts() {
-            var ec = this.chartLib === 'echarts';
-            ec ? this.renderPositionChartEC() : this.renderPositionChart();
-            ec ? this.renderMonthlyChartEC() : this.renderMonthlyChart();
-            ec ? this.renderLeagueChartEC() : this.renderLeagueChart();
-            if (ec) {
-                this.renderFeeBarEC('chart-fee-total', g => g.fee + g.travel);
-                this.renderFeeBarEC('chart-fee-base', g => g.fee);
-                this.renderFeeBarEC('chart-fee-travel', g => g.travel);
-            } else {
-                this.renderFeeBar('chart-fee-total', g => g.fee + g.travel);
-                this.renderFeeBar('chart-fee-base', g => g.fee);
-                this.renderFeeBar('chart-fee-travel', g => g.travel);
-            }
-            ec ? this.renderVenueTopEC('chart-venues-top', this.filtered) : this.renderVenueTop('chart-venues-top', this.filtered);
-            ec ? this.renderMapEC('chart-map', this.filtered) : this.renderMap('chart-map', this.filtered);
+            this.renderPositionChart();
+            this.renderMonthlyChart();
+            this.renderLeagueChart();
+            this.renderCalendarHeatmap();
+            this.renderFeeBar('chart-fee-total', g => g.fee + g.travel);
+            this.renderFeeBar('chart-fee-base', g => g.fee);
+            this.renderFeeBar('chart-fee-travel', g => g.travel);
+            this.renderVenueTop('chart-venues-top', this.filtered);
+            this.renderMap('chart-map', this.filtered);
         },
 
         // ECharts helper: init or reuse instance
@@ -339,112 +324,10 @@ document.addEventListener('alpine:init', () => {
             return v.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' €';
         },
 
-        baseLayout(height, extra) {
-            var dark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
-            var fg = getComputedStyle(document.body).color;
-            var gc = dark ? '#3B4252' : '#D8DEE9';
-            var layout = {
-                height: height,
-                margin: {t: 10, b: 30, l: 40, r: 10},
-                paper_bgcolor: 'rgba(0,0,0,0)',
-                plot_bgcolor: 'rgba(0,0,0,0)',
-                font: {color: fg, size: 12},
-                xaxis: {gridcolor: gc},
-                yaxis: {gridcolor: gc},
-            };
-            return Object.assign(layout, extra || {});
-        },
 
-        stackAnnotations(categories, totals, horizontal, fmt, angle) {
-            var fg = getComputedStyle(document.body).color;
-            return categories.map((cat, i) => {
-                var val = totals[i] || 0;
-                if (val === 0) return null;
-                var label = fmt ? fmt(val) : String(val);
-                var a = horizontal ? {
-                    x: val, y: cat, text: label,
-                    xanchor: 'left', yanchor: 'middle',
-                    xshift: 5, showarrow: false,
-                    font: {size: 11, color: fg},
-                } : {
-                    x: cat, y: val, text: label,
-                    xanchor: 'center', yanchor: 'bottom',
-                    yshift: 3, showarrow: false,
-                    font: {size: 11, color: fg},
-                };
-                if (angle) a.textangle = angle;
-                return a;
-            }).filter(a => a);
-        },
+        // --- ECharts chart functions ---
 
         renderPositionChart() {
-            var colors = ['#5E81AC','#81A1C1','#88C0D0','#8FBCBB','#A3BE8C','#EBCB8B','#D08770','#BF616A','#B48EAD'];
-            var games = this.games.filter(g => {
-                if (this.onlyCompleted && g.date >= this.today) return false;
-                if (this.filterLeague && g.league_id != this.filterLeague) return false;
-                if (this.filterPositions.length > 1
-                    && !this.filterPositions.includes(g.position)) return false;
-                return true;
-            });
-            var counts = {};
-            games.forEach(g => { counts[g.position] = (counts[g.position] || 0) + 1; });
-            var entries = Object.entries(counts).sort((a, b) => a[1] - b[1]);
-            var labels = entries.map(e => e[0]);
-            var values = entries.map(e => e[1]);
-            Plotly.newPlot('chart-positions', [{
-                x: values, y: labels, type: 'bar', orientation: 'h',
-                marker: {color: labels.map((_, i) => colors[i % colors.length])},
-                text: values, textposition: 'auto',
-            }], this.baseLayout(350, {
-                yaxis: {
-                    gridcolor: this.baseLayout(0).yaxis.gridcolor,
-                    categoryorder: 'array', categoryarray: labels,
-                    ticksuffix: '  ',
-                },
-            }), {responsive: true, displayModeBar: false});
-        },
-
-        renderMonthlyChart() {
-            var colors = ['#5E81AC','#81A1C1','#88C0D0','#8FBCBB','#A3BE8C','#EBCB8B','#D08770','#BF616A','#B48EAD'];
-            var allMonths = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
-            var f = this.filtered;
-            var raw = {};
-            var activeMonths = new Set();
-            f.forEach(g => {
-                var m = parseInt(g.month) - 1;
-                raw[g.position] = raw[g.position] || {};
-                raw[g.position][m] = (raw[g.position][m] || 0) + 1;
-                activeMonths.add(m);
-            });
-            var months = [...activeMonths].sort((a, b) => a - b);
-            var monthLabels = months.map(m => allMonths[m]);
-            var traces = this.positions
-                .filter(p => raw[p])
-                .map((p, idx) => ({
-                    x: monthLabels,
-                    y: months.map(m => raw[p][m] || 0),
-                    type: 'bar', name: p,
-                    marker: {color: colors[idx % colors.length]},
-                }));
-            var totals = months.map(m => {
-                var t = 0;
-                this.positions.forEach(p => {
-                    t += (raw[p] && raw[p][m]) || 0;
-                });
-                return t;
-            });
-            Plotly.newPlot('chart-monthly', traces, this.baseLayout(350, {
-                barmode: 'stack',
-                showlegend: true,
-                legend: {font: {size: 10}, traceorder: 'normal'},
-                margin: {t: 20, b: 30, l: 30, r: 10},
-                annotations: this.stackAnnotations(monthLabels, totals, false),
-            }), {responsive: true, displayModeBar: false});
-        },
-
-        // --- ECharts versions ---
-
-        renderPositionChartEC() {
             var colors = ['#5E81AC','#81A1C1','#88C0D0','#8FBCBB','#A3BE8C','#EBCB8B','#D08770','#BF616A','#B48EAD'];
             var games = this.games.filter(g => {
                 if (this.onlyCompleted && g.date >= this.today) return false;
@@ -474,7 +357,7 @@ document.addEventListener('alpine:init', () => {
             });
         },
 
-        renderMonthlyChartEC() {
+        renderMonthlyChart() {
             var colors = ['#5E81AC','#81A1C1','#88C0D0','#8FBCBB','#A3BE8C','#EBCB8B','#D08770','#BF616A','#B48EAD'];
             var allMonths = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
             var f = this.filtered;
@@ -526,7 +409,7 @@ document.addEventListener('alpine:init', () => {
             });
         },
 
-        renderLeagueChartEC() {
+        renderLeagueChart() {
             var colors = ['#5E81AC','#81A1C1','#88C0D0','#8FBCBB','#A3BE8C','#EBCB8B','#D08770','#BF616A','#B48EAD'];
             var games = this.games.filter(g => {
                 if (this.onlyCompleted && g.date >= this.today) return false;
@@ -579,7 +462,7 @@ document.addEventListener('alpine:init', () => {
             });
         },
 
-        renderTreemapEC(chartId, games) {
+        renderTreemap(chartId, games) {
             var colors = ['#5E81AC','#81A1C1','#88C0D0','#8FBCBB','#A3BE8C','#EBCB8B','#D08770','#BF616A','#B48EAD'];
             var dark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
 
@@ -652,53 +535,6 @@ document.addEventListener('alpine:init', () => {
             });
         },
 
-        renderLeagueChart() {
-            var colors = ['#5E81AC','#81A1C1','#88C0D0','#8FBCBB','#A3BE8C','#EBCB8B','#D08770','#BF616A','#B48EAD'];
-            var games = this.games.filter(g => {
-                if (this.onlyCompleted && g.date >= this.today) return false;
-                if (this.filterPositions.length
-                    && !this.filterPositions.includes(g.position)) return false;
-                return true;
-            });
-            var leagueData = {};
-            var posPresent = new Set();
-            games.forEach(g => {
-                leagueData[g.league] = leagueData[g.league] || {};
-                leagueData[g.league][g.position] =
-                    (leagueData[g.league][g.position] || 0) + 1;
-                posPresent.add(g.position);
-            });
-            var leagues = Object.entries(leagueData)
-                .map(([lg, pos]) => [lg, Object.values(pos).reduce((a, b) => a + b, 0)])
-                .sort((a, b) => a[1] - b[1])
-                .map(e => e[0]);
-            var posOrder = this.positions.filter(p => posPresent.has(p));
-            var traces = posOrder.map((p, i) => ({
-                x: leagues.map(lg =>
-                    (leagueData[lg] && leagueData[lg][p]) || 0
-                ),
-                y: leagues,
-                type: 'bar', orientation: 'h', name: p,
-                marker: {color: colors[i % colors.length]},
-            }));
-            var leagueTotals = leagues.map(lg => {
-                return Object.values(leagueData[lg])
-                    .reduce((a, b) => a + b, 0);
-            });
-            Plotly.newPlot('chart-leagues', traces, this.baseLayout(350, {
-                barmode: 'stack',
-                showlegend: true,
-                legend: {font: {size: 10}, traceorder: 'normal'},
-                yaxis: {
-                    gridcolor: this.baseLayout(0).yaxis.gridcolor,
-                    categoryorder: 'array', categoryarray: leagues,
-                    ticksuffix: '  ',
-                },
-                margin: {t: 10, b: 30, l: 100, r: 30},
-                annotations: this.stackAnnotations(leagues, leagueTotals, true),
-            }), {responsive: true, displayModeBar: false});
-        },
-
         async loadOverview() {
             if (this.overviewLoaded) {
                 this.$nextTick(() => this.renderOverviewCharts());
@@ -725,34 +561,26 @@ document.addEventListener('alpine:init', () => {
             });
         },
 
-        yearLabels(years) {
-            return years.map(y => '\u200b' + y);
-        },
 
-        yearTickVals(xl, years) {
-            if (years.length <= 10) return xl;
-            return xl.filter((_, i) => parseInt(years[i]) % 5 === 0);
-        },
 
         renderOverviewCharts() {
             if (!this.overviewLoaded) return;
-            var ec = this.chartLib === 'echarts';
-            ec ? this.renderOverviewGamesPerYearEC() : this.renderOverviewGamesPerYear();
-            ec ? this.renderOverviewPositionTrendEC() : this.renderOverviewPositionTrend();
-            ec ? this.renderOverviewPositionPieEC() : this.renderOverviewPositionPie();
-            ec ? this.renderOverviewLeaguesEC() : this.renderOverviewLeagues();
-            ec ? this.renderOverviewFeePerYearEC() : this.renderOverviewFeePerYear();
-            ec ? this.renderOverviewAvgPerGameEC() : this.renderOverviewAvgPerGame();
-            ec ? this.renderOverviewKmPerYearEC() : this.renderOverviewKmPerYear();
-            ec ? this.renderOverviewSankeyEC() : this.renderOverviewSankey();
-            if (ec) this.renderOverviewRiverEC();
-            ec ? this.renderVenueTopEC('chart-overview-venues-top', this.overviewFiltered) : this.renderVenueTop('chart-overview-venues-top', this.overviewFiltered);
-            ec ? this.renderMapEC('chart-overview-map', this.overviewFiltered) : this.renderMap('chart-overview-map', this.overviewFiltered);
+            this.renderOverviewGamesPerYear();
+            this.renderOverviewPositionTrend();
+            this.renderOverviewPositionPie();
+            this.renderOverviewLeagues();
+            this.renderOverviewFeePerYear();
+            this.renderOverviewAvgPerGame();
+            this.renderOverviewKmPerYear();
+            this.renderOverviewSankey();
+            this.renderOverviewRiver();
+            this.renderVenueTop('chart-overview-venues-top', this.overviewFiltered);
+            this.renderMap('chart-overview-map', this.overviewFiltered);
         },
 
         // --- ECharts Overview Charts ---
 
-        renderOverviewGamesPerYearEC() {
+        renderOverviewGamesPerYear() {
             var colors = ['#5E81AC','#81A1C1','#88C0D0','#8FBCBB','#A3BE8C','#EBCB8B','#D08770','#BF616A','#B48EAD'];
             var byYear = this.overviewByYear;
             var years = this.overviewYears;
@@ -786,7 +614,7 @@ document.addEventListener('alpine:init', () => {
             });
         },
 
-        renderOverviewPositionTrendEC() {
+        renderOverviewPositionTrend() {
             var colors = ['#5E81AC','#81A1C1','#88C0D0','#8FBCBB','#A3BE8C','#EBCB8B','#D08770','#BF616A','#B48EAD'];
             var byYear = this.overviewByYear;
             var years = this.overviewYears;
@@ -844,7 +672,7 @@ document.addEventListener('alpine:init', () => {
             });
         },
 
-        renderOverviewPositionPieEC() {
+        renderOverviewPositionPie() {
             var colors = ['#5E81AC','#81A1C1','#88C0D0','#8FBCBB','#A3BE8C','#EBCB8B','#D08770','#BF616A','#B48EAD'];
             var byYear = this.overviewByYearForPositions;
             var totals = {};
@@ -875,7 +703,7 @@ document.addEventListener('alpine:init', () => {
             });
         },
 
-        renderOverviewLeaguesEC() {
+        renderOverviewLeagues() {
             var colors = ['#5E81AC','#81A1C1','#88C0D0','#8FBCBB','#A3BE8C','#EBCB8B','#D08770','#BF616A','#B48EAD'];
             var games = this.overviewGames.filter(g => {
                 if (this.onlyCompleted && g.date >= this.today) return false;
@@ -919,7 +747,7 @@ document.addEventListener('alpine:init', () => {
             });
         },
 
-        renderOverviewFeePerYearEC() {
+        renderOverviewFeePerYear() {
             var byYear = this.overviewByYear;
             var years = this.overviewYears;
             var fees = years.map(y => byYear[y] ? byYear[y].fee : 0);
@@ -946,7 +774,7 @@ document.addEventListener('alpine:init', () => {
             });
         },
 
-        renderOverviewAvgPerGameEC() {
+        renderOverviewAvgPerGame() {
             var byYear = this.overviewByYear;
             var years = this.overviewYears;
             var avgs = years.map(y => {
@@ -971,7 +799,7 @@ document.addEventListener('alpine:init', () => {
             });
         },
 
-        renderOverviewKmPerYearEC() {
+        renderOverviewKmPerYear() {
             var byYear = this.overviewByYear;
             var years = this.overviewYears;
             var kms = years.map(y => byYear[y] ? byYear[y].km : 0);
@@ -992,7 +820,7 @@ document.addEventListener('alpine:init', () => {
             });
         },
 
-        renderOverviewRiverEC() {
+        renderOverviewRiver() {
             var colors = ['#5E81AC','#81A1C1','#88C0D0','#8FBCBB','#A3BE8C','#EBCB8B','#D08770','#BF616A','#B48EAD'];
             var games = this.overviewFiltered;
             if (!games.length) return;
@@ -1074,7 +902,7 @@ document.addEventListener('alpine:init', () => {
             });
         },
 
-        renderOverviewSankeyEC() {
+        renderOverviewSankey() {
             var colors = ['#5E81AC','#81A1C1','#88C0D0','#8FBCBB','#A3BE8C','#EBCB8B','#D08770','#BF616A','#B48EAD'];
             var dark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
             var games = this.overviewFiltered;
@@ -1145,278 +973,110 @@ document.addEventListener('alpine:init', () => {
             });
         },
 
-        // --- Plotly Overview Charts ---
-
-        renderOverviewGamesPerYear() {
+        renderCalendarHeatmap() {
             var colors = ['#5E81AC','#81A1C1','#88C0D0','#8FBCBB','#A3BE8C','#EBCB8B','#D08770','#BF616A','#B48EAD'];
-            var byYear = this.overviewByYear;
-            var years = this.overviewYears;
-            var xl = this.yearLabels(years);
-            var traces = this.overviewPositions
-                .filter(p => years.some(y =>
-                    (byYear[y].by_position[p] || 0) > 0
-                ))
-                .map((p, i) => ({
-                    x: xl,
-                    y: years.map(y =>
-                        byYear[y].by_position[p] || 0
-                    ),
-                    type: 'bar', name: p,
-                    marker: {color: colors[i % colors.length]},
-                }));
-            var totals = years.map(y => byYear[y].count);
-            Plotly.newPlot('chart-overview-games', traces,
-                this.baseLayout(350, {
-                    barmode: 'stack',
-                    showlegend: true,
-                    legend: {orientation: 'h', font: {size: 10},
-                        y: -0.15, x: 0.5, xanchor: 'center',
-                        traceorder: 'normal'},
-                    margin: {t: 20, b: 60, l: 30, r: 10},
-                    xaxis: {tickvals: this.yearTickVals(xl, years)},
-                    annotations: this.stackAnnotations(
-                        xl, totals, false
-                    ),
-                }),
-                {responsive: true, displayModeBar: false});
-        },
+            var dark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+            var posColorMap = {};
+            this.positions.forEach((p, i) => { posColorMap[p] = colors[i % colors.length]; });
 
-        renderOverviewPositionTrend() {
-            var colors = ['#5E81AC','#81A1C1','#88C0D0','#8FBCBB','#A3BE8C','#EBCB8B','#D08770','#BF616A','#B48EAD'];
-            var byYear = this.overviewByYear;
-            var years = this.overviewYears;
-            var xl = this.yearLabels(years);
-            var traces = this.overviewPositions
-                .filter(p => years.some(y =>
-                    (byYear[y].by_position[p] || 0) > 0
-                ))
-                .map((p, i) => ({
-                    x: xl,
-                    y: years.map(y =>
-                        byYear[y].by_position[p] || 0
-                    ),
-                    type: 'scatter', mode: 'lines+markers',
-                    name: p,
-                    line: {
-                        color: colors[i % colors.length], width: 2,
-                    },
-                    marker: {size: 5},
-                }));
-            Plotly.newPlot('chart-overview-trend', traces,
-                this.baseLayout(350, {
-                    showlegend: true,
-                    legend: {orientation: 'h', font: {size: 10},
-                        y: -0.15, x: 0.5, xanchor: 'center',
-                        traceorder: 'normal'},
-                    margin: {t: 20, b: 60, l: 30, r: 10},
-                    xaxis: {tickvals: this.yearTickVals(xl, years)},
-                }),
-                {responsive: true, displayModeBar: false});
-        },
-
-        renderOverviewPositionPie() {
-            var colors = ['#5E81AC','#81A1C1','#88C0D0','#8FBCBB','#A3BE8C','#EBCB8B','#D08770','#BF616A','#B48EAD'];
-            var byYear = this.overviewByYearForPositions;
-            var totals = {};
-            Object.values(byYear).forEach(y => {
-                Object.entries(y.by_position).forEach(([p, c]) => {
-                    totals[p] = (totals[p] || 0) + c;
-                });
-            });
-            var sorted = Object.entries(totals)
-                .sort((a, b) => b[1] - a[1]);
-            Plotly.newPlot('chart-overview-pie', [{
-                labels: sorted.map(e => e[0]),
-                values: sorted.map(e => e[1]),
-                type: 'pie', hole: 0.4,
-                marker: {colors: colors},
-                textinfo: 'label+percent',
-                textposition: 'outside',
-                textfont: {size: 11},
-                domain: {x: [0.1, 0.9], y: [0.1, 0.9]},
-            }], this.baseLayout(350, {
-                showlegend: false,
-                margin: {t: 30, b: 30, l: 30, r: 30},
-            }), {responsive: true, displayModeBar: false});
-        },
-
-        renderOverviewFeePerYear() {
-            var years = this.overviewYears;
-            var xl = this.yearLabels(years);
-            var byYear = this.overviewByYear;
-            var feeTrace = {
-                x: xl,
-                y: years.map(y =>
-                    byYear[y] ? byYear[y].fee : 0
-                ),
-                type: 'bar', name: 'Pauschale',
-                marker: {color: '#5E81AC'},
-            };
-            var travelTrace = {
-                x: xl,
-                y: years.map(y =>
-                    byYear[y] ? byYear[y].travel : 0
-                ),
-                type: 'bar', name: 'Fahrtkosten',
-                marker: {color: '#88C0D0'},
-            };
-            var totals = years.map(y => {
-                var d = byYear[y];
-                return d ? d.fee + d.travel : 0;
-            });
-            var fmtEur = v => Math.round(v) + ' €';
-            var traces = [feeTrace, travelTrace];
-            Plotly.newPlot('chart-overview-fee', traces,
-                this.baseLayout(350, {
-                    barmode: 'stack',
-                    showlegend: true,
-                    legend: {orientation: 'h', font: {size: 10},
-                        y: -0.15, x: 0.5, xanchor: 'center',
-                        traceorder: 'normal'},
-                    margin: {t: 20, b: 60, l: 50, r: 10},
-                    xaxis: {tickvals: this.yearTickVals(xl, years)},
-                    annotations: this.stackAnnotations(
-                        xl, totals, false, fmtEur, -45
-                    ),
-                }),
-                {responsive: true, displayModeBar: false});
-        },
-
-        renderOverviewAvgPerGame() {
-            var years = this.overviewYears;
-            var xl = this.yearLabels(years);
-            var byYear = this.overviewByYear;
-            var avgs = years.map(y => {
-                var d = byYear[y];
-                if (!d || d.count === 0) return 0;
-                return (d.fee + d.travel) / d.count;
-            });
-            var fmtEur = v => v.toFixed(0) + ' €';
-            Plotly.newPlot('chart-overview-avg', [{
-                x: xl, y: avgs, type: 'bar',
-                marker: {color: '#A3BE8C'},
-                text: avgs.map(fmtEur), textposition: 'auto',
-            }], this.baseLayout(350, {
-                margin: {t: 20, b: 30, l: 50, r: 10},
-                xaxis: {tickvals: this.yearTickVals(xl, years)},
-            }), {responsive: true, displayModeBar: false});
-        },
-
-        renderOverviewKmPerYear() {
-            var years = this.overviewYears;
-            var xl = this.yearLabels(years);
-            var byYear = this.overviewByYear;
-            var kms = years.map(y =>
-                byYear[y] ? byYear[y].km : 0
-            );
-            Plotly.newPlot('chart-overview-km', [{
-                x: xl, y: kms, type: 'bar',
-                marker: {color: '#81A1C1'},
-                text: kms.map(v => v.toLocaleString('de-DE')),
-                textposition: 'auto',
-            }], this.baseLayout(350, {
-                margin: {t: 20, b: 30, l: 50, r: 10},
-                xaxis: {tickvals: this.yearTickVals(xl, years)},
-            }), {responsive: true, displayModeBar: false});
-        },
-
-        renderOverviewSankey() {
-            var colors = ['#5E81AC','#81A1C1','#88C0D0','#8FBCBB','#A3BE8C','#EBCB8B','#D08770','#BF616A','#B48EAD'];
-            var games = this.overviewFiltered;
+            var games = this.filtered;
             if (!games.length) return;
-            var years = this.overviewYears;
-            var xl = this.yearLabels(years);
-            var positions = this.overviewPositions.filter(
-                p => games.some(g => g.position === p)
-            );
-            var counts = {};
-            games.forEach(g => {
-                var key = g.position + '|' + g.year;
-                counts[key] = (counts[key] || 0) + 1;
-            });
-            var z = positions.map(p =>
-                years.map(y => counts[p + '|' + y] || 0)
-            );
-            var annotations = [];
-            positions.forEach((p, pi) => {
-                years.forEach((y, yi) => {
-                    var val = counts[p + '|' + y] || 0;
-                    if (val > 0) {
-                        annotations.push({
-                            x: xl[yi], y: p,
-                            text: '' + val,
-                            showarrow: false,
-                            font: {color: val > 8 ? '#2E3440' : '#ECEFF4', size: 11},
-                        });
-                    }
-                });
-            });
-            Plotly.newPlot('chart-overview-sankey', [{
-                x: xl, y: positions, z: z,
-                type: 'heatmap',
-                colorscale: [
-                    [0, '#3B4252'],
-                    [0.3, '#5E81AC'],
-                    [0.6, '#88C0D0'],
-                    [0.8, '#D08770'],
-                    [1, '#BF616A'],
-                ],
-                showscale: false,
-                hoverongaps: false,
-                xgap: 2,
-                ygap: 2,
-            }], this.baseLayout(Math.max(300, positions.length * 45), {
-                margin: {t: 10, b: 30, l: 40, r: 10},
-                xaxis: {tickvals: xl, side: 'bottom'},
-                yaxis: {autorange: 'reversed'},
-                annotations: annotations,
-            }), {responsive: true, displayModeBar: false});
-        },
 
-        renderOverviewLeagues() {
-            var colors = ['#5E81AC','#81A1C1','#88C0D0','#8FBCBB','#A3BE8C','#EBCB8B','#D08770','#BF616A','#B48EAD'];
-            var games = this.overviewGames.filter(g => {
-                if (this.onlyCompleted && g.date >= this.today) return false;
-                if (this.ovFilterPositions.length
-                    && !this.ovFilterPositions.includes(g.position)) return false;
-                if (this.ovYearFrom && g.year < this.ovYearFrom) return false;
-                if (this.ovYearTo && g.year > this.ovYearTo) return false;
-                return true;
-            });
-            if (!games.length) return;
-            var seenYears = new Set();
-            games.forEach(g => seenYears.add(g.year));
-            var years = [...seenYears].sort();
-            var xl = this.yearLabels(years);
-            var leagueTotals = {};
+            // Group games by date
+            var byDate = {};
             games.forEach(g => {
-                leagueTotals[g.league] = (leagueTotals[g.league] || 0) + 1;
+                if (!byDate[g.date]) byDate[g.date] = [];
+                byDate[g.date].push(g);
             });
-            var leagues = Object.keys(leagueTotals)
-                .sort((a, b) => leagueTotals[b] - leagueTotals[a]);
-            var counts = {};
-            games.forEach(g => {
-                var key = g.league + '|' + g.year;
-                counts[key] = (counts[key] || 0) + 1;
+
+            // Calendar data: [date, count, dominantPosition]
+            var calData = Object.entries(byDate).map(([date, gs]) => {
+                // Dominant position = most frequent
+                var posCounts = {};
+                gs.forEach(g => { posCounts[g.position] = (posCounts[g.position] || 0) + 1; });
+                var dominant = Object.entries(posCounts).sort((a, b) => b[1] - a[1])[0][0];
+                return {
+                    date: date,
+                    count: gs.length,
+                    position: dominant,
+                    games: gs,
+                };
             });
-            var traces = years.map((y, i) => ({
-                x: leagues,
-                y: leagues.map(lg => counts[lg + '|' + y] || 0),
-                type: 'bar',
-                name: y,
-                marker: {color: colors[i % colors.length]},
+
+            // Build pieces for piecewise visualMap (one color per position, sorted)
+            var posSet = new Set(calData.map(d => d.position));
+            var positionsUsed = this.positions.filter(p => posSet.has(p));
+            var pieces = positionsUsed.map(p => ({
+                value: positionsUsed.indexOf(p),
+                label: p,
+                color: posColorMap[p],
             }));
-            Plotly.newPlot('chart-overview-leagues', traces,
-                this.baseLayout(350, {
-                barmode: 'stack',
-                showlegend: true,
-                legend: {font: {size: 10}, traceorder: 'normal'},
-                margin: {t: 10, b: 80, l: 40, r: 10},
-                xaxis: {tickangle: -45},
-            }), {responsive: true, displayModeBar: false});
+
+            // Data for heatmap: [date, positionIndex]
+            var seriesData = calData.map(d => [d.date, positionsUsed.indexOf(d.position)]);
+
+            var year = this.season;
+            var chart = this.ecInit('chart-calendar', 180);
+            if (!chart) return;
+            chart.setOption({
+                tooltip: {
+                    formatter: function(params) {
+                        var entry = calData.find(d => d.date === params.data[0]);
+                        if (!entry) return '';
+                        var d = entry.date;
+                        var deFmt = d.slice(8,10) + '.' + d.slice(5,7) + '.' + d.slice(0,4);
+                        var lines = ['<b>' + deFmt + '</b> (' + entry.count + ' Spiel' + (entry.count > 1 ? 'e' : '') + ')'];
+                        entry.games.forEach(g => {
+                            var color = posColorMap[g.position] || '#888';
+                            lines.push('<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + color + ';margin-right:4px"></span>'
+                                + g.position + ' — ' + (g.home || '?') + ' vs ' + (g.away || '?')
+                                + (g.venue ? ' <span style="color:#999">(' + g.venue + ')</span>' : ''));
+                        });
+                        return lines.join('<br>');
+                    },
+                },
+                visualMap: {
+                    type: 'piecewise',
+                    pieces: pieces,
+                    orient: 'horizontal',
+                    left: 'center', bottom: 0,
+                    textStyle: {color: dark ? '#D8DEE9' : '#2E3440', fontSize: 10},
+                },
+                calendar: {
+                    range: year,
+                    top: 30,
+                    left: 40,
+                    right: 10,
+                    bottom: 30,
+                    cellSize: ['auto', 15],
+                    itemStyle: {
+                        borderColor: dark ? '#2E3440' : '#ECEFF4',
+                        borderWidth: 1,
+                        color: dark ? '#3B4252' : '#E5E9F0',
+                    },
+                    splitLine: {lineStyle: {color: dark ? '#4C566A' : '#D8DEE9'}},
+                    yearLabel: {show: false},
+                    dayLabel: {
+                        firstDay: 1,
+                        nameMap: ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'],
+                        color: dark ? '#D8DEE9' : '#2E3440',
+                        fontSize: 10,
+                    },
+                    monthLabel: {
+                        nameMap: ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'],
+                        color: dark ? '#D8DEE9' : '#2E3440',
+                        fontSize: 10,
+                    },
+                },
+                series: [{
+                    type: 'heatmap',
+                    coordinateSystem: 'calendar',
+                    data: seriesData,
+                }],
+            });
         },
 
-        renderFeeBarEC(chartId, valueFn) {
+        renderFeeBar(chartId, valueFn) {
             var colors = ['#5E81AC','#81A1C1','#88C0D0','#8FBCBB','#A3BE8C','#EBCB8B','#D08770','#BF616A','#B48EAD'];
             var allMonths = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
             var f = this.filtered;
@@ -1470,135 +1130,9 @@ document.addEventListener('alpine:init', () => {
             });
         },
 
-        renderFeeBar(chartId, valueFn) {
-            var colors = ['#5E81AC','#81A1C1','#88C0D0','#8FBCBB','#A3BE8C','#EBCB8B','#D08770','#BF616A','#B48EAD'];
-            var months = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
-            var f = this.filtered;
-            var data = {};
-            var monthsPresent = new Set();
-            f.forEach(g => {
-                var m = parseInt(g.month) - 1;
-                data[g.position] = data[g.position] || {};
-                data[g.position][m] = (data[g.position][m] || 0) + valueFn(g);
-                monthsPresent.add(m);
-            });
-            var sortedMonths = [...monthsPresent].sort((a, b) => a - b);
-            var monthLabels = sortedMonths.map(m => months[m] + ' ' + this.season);
-            var traces = this.positions
-                .filter(p => data[p])
-                .map((p, i) => ({
-                    y: monthLabels,
-                    x: sortedMonths.map(m => data[p][m] || 0),
-                    type: 'bar', orientation: 'h', name: p,
-                    marker: {color: colors[i % colors.length]},
-                }));
-            var totalArr = sortedMonths.map(m => {
-                var t = 0;
-                this.positions.forEach(p => {
-                    t += (data[p] && data[p][m]) || 0;
-                });
-                return t;
-            });
-            var fmtEur = v => Math.round(v) + ' €';
-            Plotly.newPlot(chartId, traces, this.baseLayout(350, {
-                barmode: 'stack',
-                showlegend: true,
-                legend: {font: {size: 10}, traceorder: 'normal'},
-                yaxis: {
-                    gridcolor: this.baseLayout(0).yaxis.gridcolor,
-                    categoryorder: 'array',
-                    categoryarray: monthLabels,
-                    ticksuffix: '  ',
-                },
-                margin: {t: 10, b: 30, l: 90, r: 60},
-                annotations: this.stackAnnotations(
-                    monthLabels, totalArr, true, fmtEur
-                ),
-            }), {responsive: true, displayModeBar: false});
-        },
 
-        renderTreemap(chartId, games) {
-            var colors = ['#5E81AC','#81A1C1','#88C0D0','#8FBCBB','#A3BE8C','#EBCB8B','#D08770','#BF616A','#B48EAD'];
-            var dark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
-            var fg = getComputedStyle(document.body).color;
 
-            // Build hierarchy: Alle > position > league
-            var labels = ['Alle'];
-            var parents = [''];
-            var values = [games.length];
-            var markerColors = [dark ? '#2E3440' : '#ECEFF4'];
-
-            var posData = {};
-            games.forEach(g => {
-                if (!posData[g.position]) posData[g.position] = {};
-                posData[g.position][g.league] = (posData[g.position][g.league] || 0) + 1;
-            });
-
-            // Mix color towards white (light) or dark (dark theme)
-            function shadeColor(hex, factor) {
-                var r = parseInt(hex.slice(1,3), 16);
-                var g = parseInt(hex.slice(3,5), 16);
-                var b = parseInt(hex.slice(5,7), 16);
-                var target = dark ? 30 : 240;
-                r = Math.round(r + (target - r) * factor);
-                g = Math.round(g + (target - g) * factor);
-                b = Math.round(b + (target - b) * factor);
-                return '#' + [r,g,b].map(c => c.toString(16).padStart(2,'0')).join('');
-            }
-
-            var posOrder = this.positions.filter(p => posData[p]);
-            posOrder.forEach((pos, i) => {
-                var baseColor = colors[i % colors.length];
-                var total = Object.values(posData[pos]).reduce((a, b) => a + b, 0);
-                labels.push(pos);
-                parents.push('Alle');
-                values.push(total);
-                markerColors.push(baseColor);
-
-                var leagues = Object.entries(posData[pos]).sort((a, b) => b[1] - a[1]);
-                leagues.forEach(([lg, count], j) => {
-                    labels.push(pos + '/' + lg);
-                    parents.push(pos);
-                    values.push(count);
-                    var shade = 0.2 + (j / Math.max(leagues.length - 1, 1)) * 0.4;
-                    markerColors.push(shadeColor(baseColor, shade));
-                });
-            });
-
-            // Display text: league name for leaves, "Pos (count)" for parents
-            var displayText = labels.map((l, idx) => {
-                var slash = l.indexOf('/');
-                if (slash >= 0) return l.substring(slash + 1);
-                if (l === 'Alle') return 'Alle (' + values[idx] + ')';
-                return l + ' (' + values[idx] + ')';
-            });
-
-            Plotly.newPlot(chartId, [{
-                type: 'treemap',
-                ids: labels,
-                labels: displayText,
-                parents: parents,
-                values: values,
-                marker: {
-                    colors: markerColors,
-                    line: {color: dark ? '#2E3440' : '#ECEFF4', width: 2},
-                },
-                textinfo: 'label+value',
-                textfont: {size: 12},
-                branchvalues: 'total',
-                pathbar: {visible: true, textfont: {size: 11}},
-                tiling: {packing: 'squarify', pad: 3},
-                maxdepth: 3,
-                level: 'Alle',
-            }], {
-                height: 350,
-                margin: {t: 25, b: 0, l: 0, r: 0},
-                paper_bgcolor: 'rgba(0,0,0,0)',
-                font: {color: fg},
-            }, {responsive: true, displayModeBar: false});
-        },
-
-        renderVenueTopEC(chartId, games) {
+        renderVenueTop(chartId, games) {
             var colors = ['#5E81AC','#81A1C1','#88C0D0','#8FBCBB','#A3BE8C','#EBCB8B','#D08770','#BF616A','#B48EAD'];
             var counts = {};
             games.forEach(g => {
@@ -1654,7 +1188,7 @@ document.addEventListener('alpine:init', () => {
             {name: 'Nürnberg', lon: 11.078, lat: 49.454},
         ],
 
-        renderMapEC(chartId, games) {
+        renderMap(chartId, games) {
             if (!this._germanyMapLoaded) return;
             var dark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
             var venues = {};
@@ -1796,86 +1330,6 @@ document.addEventListener('alpine:init', () => {
             });
         },
 
-        renderVenueTop(chartId, games) {
-            var colors = ['#5E81AC','#81A1C1','#88C0D0','#8FBCBB','#A3BE8C','#EBCB8B','#D08770','#BF616A','#B48EAD'];
-            var counts = {};
-            games.forEach(g => {
-                // Extract city from venue (format: "Stadium, City" or just "City")
-                var venue = g.venue || '';
-                if (!venue) return;
-                var parts = venue.split(', ');
-                var city = parts[0];
-                counts[city] = (counts[city] || 0) + 1;
-            });
-            var sorted = Object.entries(counts)
-                .sort((a, b) => a[1] - b[1]);
-            var top = sorted.slice(-10);
-            var labels = top.map(e => e[0]);
-            var values = top.map(e => e[1]);
 
-            Plotly.newPlot(chartId, [{
-                x: values, y: labels, type: 'bar', orientation: 'h',
-                marker: {color: labels.map((_, i) => colors[i % colors.length])},
-                text: values, textposition: 'auto',
-            }], this.baseLayout(500, {
-                yaxis: {
-                    gridcolor: this.baseLayout(0).yaxis.gridcolor,
-                    categoryorder: 'array', categoryarray: labels,
-                    ticksuffix: '  ',
-                },
-                margin: {t: 10, b: 30, l: 120, r: 10},
-            }), {responsive: true, displayModeBar: false});
-        },
-
-        renderMap(chartId, games) {
-            var dark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
-            // Aggregate games by venue (lat/lon)
-            var venues = {};
-            games.forEach(g => {
-                if (!g.venue_lat || !g.venue_lon || (g.venue_lat === 0 && g.venue_lon === 0)) return;
-                var key = g.venue_lat.toFixed(4) + ',' + g.venue_lon.toFixed(4);
-                if (!venues[key]) {
-                    venues[key] = {lat: g.venue_lat, lon: g.venue_lon, name: g.venue || '', count: 0};
-                }
-                venues[key].count++;
-            });
-            var entries = Object.values(venues);
-            if (!entries.length) return;
-
-            var maxCount = Math.max(...entries.map(e => e.count));
-            var trace = {
-                type: 'scattermapbox',
-                lat: entries.map(e => e.lat),
-                lon: entries.map(e => e.lon),
-                text: entries.map(e => e.name + ' (' + e.count + ')'),
-                marker: {
-                    size: entries.map(e => Math.max(8, Math.sqrt(e.count / maxCount) * 40)),
-                    color: '#5E81AC',
-                    opacity: 0.7,
-                },
-                hoverinfo: 'text',
-            };
-
-            var lats = entries.map(e => e.lat);
-            var lons = entries.map(e => e.lon);
-            var cLat = (Math.min(...lats) + Math.max(...lats)) / 2;
-            var cLon = (Math.min(...lons) + Math.max(...lons)) / 2;
-            var latSpan = Math.max(...lats) - Math.min(...lats) || 1;
-            var lonSpan = Math.max(...lons) - Math.min(...lons) || 1;
-            var span = Math.max(latSpan, lonSpan);
-            // zoom: ~6 for Germany-wide, ~8 for regional, ~10 for local
-            var zoom = Math.round(Math.log2(180 / span));
-
-            Plotly.newPlot(chartId, [trace], {
-                mapbox: {
-                    style: dark ? 'carto-darkmatter' : 'open-street-map',
-                    center: {lat: cLat, lon: cLon},
-                    zoom: zoom,
-                },
-                height: 500,
-                margin: {t: 0, b: 0, l: 0, r: 0},
-                paper_bgcolor: 'rgba(0,0,0,0)',
-            }, {responsive: true, displayModeBar: false, scrollZoom: true});
-        },
     }));
 });

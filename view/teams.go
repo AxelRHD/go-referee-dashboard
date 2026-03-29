@@ -38,8 +38,7 @@ func TeamList(w http.ResponseWriter, r *http.Request, teams []store.Team) g.Node
 				h.A(h.Class("btn btn-success"), g.Attr("href", "/teams/new"), g.Text("Neues Team")),
 			),
 			h.Div(
-				h.A(h.Class("btn btn-sm btn-outline-secondary me-1"), g.Attr("href", "/teams/export/csv"), g.Text("CSV")),
-				h.A(h.Class("btn btn-sm btn-outline-secondary"), g.Attr("href", "/teams/export/sql"), g.Text("SQL")),
+				h.A(h.Class("btn btn-sm btn-outline-secondary"), g.Attr("href", "/teams/export/csv"), g.Text("CSV")),
 			),
 		),
 		DataTable(

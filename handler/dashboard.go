@@ -84,7 +84,7 @@ func (dh *DashboardHandler) APIOverview(w http.ResponseWriter, r *http.Request) 
 			Fee:      g.RefereeFee,
 			Travel:   g.TravelCosts,
 			Km:       g.KmDriven,
-			Venue:    venueDisplay(g.Venue.City, ""),
+			Venue:    venueLabel(g.Venue),
 			VenueLat: g.Venue.Lat,
 			VenueLon: g.Venue.Lon,
 		})
@@ -171,7 +171,7 @@ func (dh *DashboardHandler) APISeason(w http.ResponseWriter, r *http.Request) {
 			Month:      month,
 			Home:       g.HomeTeam.Name,
 			Away:       g.AwayTeam.Name,
-			Venue:      venueDisplay(g.Venue.City, ""),
+			Venue:      venueLabel(g.Venue),
 			VenueLat:   g.Venue.Lat,
 			VenueLon:   g.Venue.Lon,
 			League:     leagueShortMap[g.League.ID],
@@ -214,9 +214,9 @@ func (dh *DashboardHandler) APISeason(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func venueDisplay(city, stadium string) string {
-	if stadium != "" && city != "" {
-		return city + ", " + stadium
+func venueLabel(v store.VenueRef) string {
+	if v.ShortName != "" {
+		return v.ShortName
 	}
-	return city
+	return v.City
 }

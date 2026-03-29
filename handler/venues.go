@@ -31,7 +31,6 @@ func (h *VenueHandler) Routes(r chi.Router) {
 	r.Post("/venues/{id}/edit", h.Update)
 	r.Post("/venues/{id}/delete", h.Delete)
 	r.Get("/venues/export/csv", h.ExportCSV)
-	r.Get("/venues/export/sql", h.ExportSQL)
 }
 
 func (h *VenueHandler) APIRoutes(r chi.Router) {
@@ -235,22 +234,6 @@ func (vh *VenueHandler) ExportCSV(w http.ResponseWriter, r *http.Request) {
 		cw.Write([]string{v.ShortName, v.City, v.Stadium, lat, lon})
 	}
 	cw.Flush()
-}
-
-func (vh *VenueHandler) ExportSQL(w http.ResponseWriter, r *http.Request) {
-	venues, err := vh.s.ListVenues()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.Header().Set("Content-Disposition", exportFilename("spielorte", "sql"))
-
-	for _, v := range venues {
-		fmt.Fprintf(w, "INSERT INTO venues (city, stadium, short_name, lat, lon) VALUES (%s, %s, %s, %f, %f);\n",
-			sqlEscape(v.City), sqlEscape(v.Stadium), sqlEscape(v.ShortName), v.Lat, v.Lon)
-	}
 }
 
 // Helpers

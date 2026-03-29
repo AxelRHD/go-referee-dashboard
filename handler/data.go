@@ -119,9 +119,3 @@ func (dh *DataHandler) DeletePosition(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/data", http.StatusSeeOther)
 }
 
-func truncate(s string, n int) string {
-	if len(s) <= n {
-		return s
-	}
-	return s[:n]
-}

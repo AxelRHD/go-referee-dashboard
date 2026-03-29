@@ -64,8 +64,7 @@ func GameList(w http.ResponseWriter, r *http.Request, games []store.Game, stats 
 				h.A(h.Class("btn btn-success"), g.Attr("href", "/games/new"), g.Text("Neues Spiel")),
 			),
 			h.Div(
-				h.A(h.Class("btn btn-sm btn-outline-secondary me-1"), g.Attr("href", "/games/export/csv"), g.Text("CSV")),
-				h.A(h.Class("btn btn-sm btn-outline-secondary"), g.Attr("href", "/games/export/sql"), g.Text("SQL")),
+				h.A(h.Class("btn btn-sm btn-outline-secondary"), g.Attr("href", "/games/export/csv"), g.Text("CSV")),
 			),
 		),
 		filterBar(filters, opts),
@@ -171,7 +170,10 @@ func GameTable(games []store.Game, stats GameStats, f GameFilters) g.Node {
 
 	var rows []g.Node
 	for _, gm := range pageGames {
-		venueDisplay := gm.Venue.City
+		venueDisplay := gm.Venue.ShortName
+		if venueDisplay == "" {
+			venueDisplay = gm.Venue.City
+		}
 		totalFee := gm.RefereeFee + gm.TravelCosts
 		rows = append(rows, h.Tr(
 			h.Td(g.Text(gm.GameDate)),

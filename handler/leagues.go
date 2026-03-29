@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -32,7 +31,6 @@ func (h *LeagueHandler) Routes(r chi.Router) {
 	r.Post("/leagues/{id}/edit", h.Update)
 	r.Post("/leagues/{id}/delete", h.Delete)
 	r.Get("/leagues/export/csv", h.ExportCSV)
-	r.Get("/leagues/export/sql", h.ExportSQL)
 }
 
 func (h *LeagueHandler) APIRoutes(r chi.Router) {
@@ -188,22 +186,6 @@ func (lh *LeagueHandler) ExportCSV(w http.ResponseWriter, r *http.Request) {
 	cw.Flush()
 }
 
-func (lh *LeagueHandler) ExportSQL(w http.ResponseWriter, r *http.Request) {
-	leagues, err := lh.s.ListLeagues()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.Header().Set("Content-Disposition", exportFilename("ligen", "sql"))
-
-	for _, lg := range leagues {
-		fmt.Fprintf(w, "INSERT INTO leagues (name, short_name, sorter, remarks) VALUES (%s, %s, %d, %s);\n",
-			sqlEscape(lg.Name), sqlEscape(lg.ShortName), lg.Sorter, sqlEscape(lg.Remarks))
-	}
-}
-
 // Helpers
 
 func (lh *LeagueHandler) getLeague(w http.ResponseWriter, r *http.Request) (store.League, error) {
@@ -232,10 +214,6 @@ func formValues(r *http.Request) map[string]string {
 		}
 	}
 	return vals
-}
-
-func sqlEscape(val string) string {
-	return "'" + strings.ReplaceAll(val, "'", "''") + "'"
 }
 
 const exportTimestampFormat = "2006-01-02_150405"

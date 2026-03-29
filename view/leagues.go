@@ -33,8 +33,7 @@ func LeagueList(w http.ResponseWriter, r *http.Request, leagues []store.League) 
 				h.A(h.Class("btn btn-success"), g.Attr("href", "/leagues/new"), g.Text("Neue Liga")),
 			),
 			h.Div(
-				h.A(h.Class("btn btn-sm btn-outline-secondary me-1"), g.Attr("href", "/leagues/export/csv"), g.Text("CSV")),
-				h.A(h.Class("btn btn-sm btn-outline-secondary"), g.Attr("href", "/leagues/export/sql"), g.Text("SQL")),
+				h.A(h.Class("btn btn-sm btn-outline-secondary"), g.Attr("href", "/leagues/export/csv"), g.Text("CSV")),
 			),
 		),
 		DataTable(

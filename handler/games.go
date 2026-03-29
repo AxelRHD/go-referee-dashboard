@@ -31,7 +31,6 @@ func (h *GameHandler) Routes(r chi.Router) {
 	r.Post("/games/{id}/edit", h.Update)
 	r.Post("/games/{id}/delete", h.Delete)
 	r.Get("/games/export/csv", h.ExportCSV)
-	r.Get("/games/export/sql", h.ExportSQL)
 }
 
 func (h *GameHandler) APIRoutes(r chi.Router) {
@@ -214,30 +213,6 @@ func (gh *GameHandler) ExportCSV(w http.ResponseWriter, r *http.Request) {
 	cw.Flush()
 }
 
-func (gh *GameHandler) ExportSQL(w http.ResponseWriter, r *http.Request) {
-	games, err := gh.s.ListGames()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.Header().Set("Content-Disposition", exportFilename("spiele", "sql"))
-
-	for _, gm := range games {
-		exhibition := 0
-		if gm.Exhibition {
-			exhibition = 1
-		}
-		fmt.Fprintf(w, "INSERT INTO games (game_date, game_time, home_team, away_team, venue, league, position, referee_fee, travel_costs, km_driven, exhibition, remarks) VALUES (%s, %s, %s, %s, %s, %s, %s, %f, %f, %d, %d, %s);\n",
-			sqlEscape(gm.GameDate), sqlEscape(gm.GameTime),
-			sqlEscape(gm.HomeTeam.Name), sqlEscape(gm.AwayTeam.Name),
-			sqlEscape(gm.Venue.City), sqlEscape(gm.League.Name),
-			sqlEscape(gm.Position), gm.RefereeFee, gm.TravelCosts,
-			gm.KmDriven, exhibition, sqlEscape(gm.Remarks))
-	}
-}
-
 // Helpers
 
 func (gh *GameHandler) buildGame(id string, data validation.GameData) (*store.Game, error) {
@@ -377,6 +352,7 @@ func filterGames(games []store.Game, f view.GameFilters) []store.Game {
 			if !strings.Contains(strings.ToLower(gm.HomeTeam.Name), q) &&
 				!strings.Contains(strings.ToLower(gm.AwayTeam.Name), q) &&
 				!strings.Contains(strings.ToLower(gm.Venue.City), q) &&
+				!strings.Contains(strings.ToLower(gm.Venue.ShortName), q) &&
 				!strings.Contains(strings.ToLower(gm.Remarks), q) {
 				continue
 			}

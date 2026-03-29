@@ -42,8 +42,7 @@ func VenueList(w http.ResponseWriter, r *http.Request, venues []store.Venue) g.N
 				h.A(h.Class("btn btn-success"), g.Attr("href", "/venues/new"), g.Text("Neuer Spielort")),
 			),
 			h.Div(
-				h.A(h.Class("btn btn-sm btn-outline-secondary me-1"), g.Attr("href", "/venues/export/csv"), g.Text("CSV")),
-				h.A(h.Class("btn btn-sm btn-outline-secondary"), g.Attr("href", "/venues/export/sql"), g.Text("SQL")),
+				h.A(h.Class("btn btn-sm btn-outline-secondary"), g.Attr("href", "/venues/export/csv"), g.Text("CSV")),
 			),
 		),
 		DataTable(

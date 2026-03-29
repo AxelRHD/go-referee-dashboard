@@ -29,7 +29,6 @@ func (h *TeamHandler) Routes(r chi.Router) {
 	r.Post("/teams/{id}/edit", h.Update)
 	r.Post("/teams/{id}/delete", h.Delete)
 	r.Get("/teams/export/csv", h.ExportCSV)
-	r.Get("/teams/export/sql", h.ExportSQL)
 }
 
 func (h *TeamHandler) APIRoutes(r chi.Router) {
@@ -186,26 +185,6 @@ func (th *TeamHandler) ExportCSV(w http.ResponseWriter, r *http.Request) {
 		cw.Write([]string{t.Name, t.State, active, t.Remarks})
 	}
 	cw.Flush()
-}
-
-func (th *TeamHandler) ExportSQL(w http.ResponseWriter, r *http.Request) {
-	teams, err := th.s.ListTeams()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.Header().Set("Content-Disposition", exportFilename("teams", "sql"))
-
-	for _, t := range teams {
-		isActive := 0
-		if t.IsActive {
-			isActive = 1
-		}
-		fmt.Fprintf(w, "INSERT INTO teams (name, state, is_active, remarks) VALUES (%s, %s, %d, %s);\n",
-			sqlEscape(t.Name), sqlEscape(t.State), isActive, sqlEscape(t.Remarks))
-	}
 }
 
 // Helpers

@@ -251,4 +251,4 @@ go run scripts/screenshots.go [base-url]
 
 ## License
 
-Private project — not licensed for redistribution.
+[MIT](LICENSE)

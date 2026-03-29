@@ -15,12 +15,14 @@ import (
 type ServerFunc func(cfg config.Config) (http.Handler, *store.Store)
 
 func App(cfg config.Config, newServer ServerFunc, version string) *cli.Command {
+	serve := serveCmd(cfg, newServer)
 	return &cli.Command{
-		Name:    "referee-dashboard",
-		Usage:   "Referee Dashboard Server",
-		Version: version,
+		Name:           "referee-dashboard",
+		Usage:          "Referee Dashboard Server",
+		Version:        version,
+		DefaultCommand: serve.Name,
 		Commands: []*cli.Command{
-			serveCmd(cfg, newServer),
+			serve,
 			healthCmd(cfg),
 		},
 	}

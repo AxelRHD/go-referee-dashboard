@@ -31,7 +31,8 @@ func (h *DataHandler) Routes(r chi.Router) {
 
 func (dh *DataHandler) Page(w http.ResponseWriter, r *http.Request) {
 	positions, _ := dh.s.ListPositions()
-	page := view.DataPage(w, r, positions, nil)
+	games, _ := dh.s.ListGames()
+	page := view.DataPage(w, r, positions, len(games) > 0, nil)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	page.Render(w)
 }
@@ -54,9 +55,17 @@ func (dh *DataHandler) Import(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
+	// Prüfe ob Daten vorhanden und Überschreiben bestätigt
+	games, _ := dh.s.ListGames()
+	if len(games) > 0 && r.FormValue("overwrite") != "1" {
+		view.SetFlash(w, "Import abgebrochen: Es sind bereits Daten vorhanden. Bitte bestätigen Sie das Überschreiben.")
+		http.Redirect(w, r, "/data", http.StatusSeeOther)
+		return
+	}
+
 	if err := dh.s.ImportJSON(file); err != nil {
 		positions, _ := dh.s.ListPositions()
-		page := view.DataPage(w, r, positions, []string{fmt.Sprintf("Import-Fehler: %v", err)})
+		page := view.DataPage(w, r, positions, len(games) > 0, []string{fmt.Sprintf("Import-Fehler: %v", err)})
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		page.Render(w)
 		return

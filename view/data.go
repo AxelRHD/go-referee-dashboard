@@ -10,7 +10,7 @@ import (
 	"github.com/axelrhd/referee-dashboard/store"
 )
 
-func DataPage(w http.ResponseWriter, r *http.Request, positions []store.Position, messages []string) g.Node {
+func DataPage(w http.ResponseWriter, r *http.Request, positions []store.Position, hasData bool, messages []string) g.Node {
 	var alerts []g.Node
 	for _, msg := range messages {
 		alerts = append(alerts, h.Div(h.Class("alert alert-success alert-dismissible fade show"),
@@ -47,27 +47,7 @@ func DataPage(w http.ResponseWriter, r *http.Request, positions []store.Position
 		),
 
 		// JSON import
-		h.Div(h.Class("card mb-4"),
-			h.Div(h.Class("card-body"),
-				h.H5(h.Class("card-title"), g.Text("JSON-Import")),
-				h.P(h.Class("text-muted"), g.Text("Importiert eine zuvor exportierte JSON-Datei. Achtung: Überschreibt alle bestehenden Daten!")),
-				h.FormEl(g.Attr("method", "post"), g.Attr("action", "/data/import"),
-					g.Attr("enctype", "multipart/form-data"),
-					h.Div(h.Class("row g-3 align-items-end"),
-						h.Div(h.Class("col"),
-							h.Label(h.Class("form-label"), g.Text("Datei")),
-							h.Input(h.Class("form-control"),
-								g.Attr("type", "file"), g.Attr("name", "file"),
-								g.Attr("accept", ".json")),
-						),
-						h.Div(h.Class("col-auto"),
-							h.Button(h.Class("btn btn-primary"), g.Attr("type", "submit"),
-								g.Text("Importieren")),
-						),
-					),
-				),
-			),
-		),
+		importCard(hasData),
 
 		// Positions
 		positionsCard(positions),
@@ -75,7 +55,61 @@ func DataPage(w http.ResponseWriter, r *http.Request, positions []store.Position
 }
 
 func DataPageWithMessages(w http.ResponseWriter, r *http.Request, messages []string) g.Node {
-	return DataPage(w, r, nil, messages)
+	return DataPage(w, r, nil, false, messages)
+}
+
+func importCard(hasData bool) g.Node {
+	var overwriteNodes []g.Node
+	if hasData {
+		overwriteNodes = []g.Node{
+			h.Div(h.Class("alert alert-warning mt-3 mb-0"),
+				h.I(h.Class("bi bi-exclamation-triangle-fill me-2")),
+				g.Text("Es sind bereits Daten vorhanden. Ein Import überschreibt alle bestehenden Daten!"),
+			),
+			h.Div(h.Class("form-check mt-3"),
+				h.Input(h.Class("form-check-input"), g.Attr("type", "checkbox"),
+					g.Attr("name", "overwrite"), g.Attr("id", "overwrite"),
+					g.Attr("value", "1")),
+				h.Label(h.Class("form-check-label"), g.Attr("for", "overwrite"),
+					g.Text("Bestehende Daten überschreiben")),
+			),
+		}
+	}
+
+	confirmJS := ""
+	if hasData {
+		confirmJS = "if (!this.querySelector('#overwrite').checked) { alert('Bitte bestätigen Sie das Überschreiben.'); return false; } return confirm('Alle bestehenden Daten werden unwiderruflich überschrieben. Fortfahren?')"
+	}
+
+	formAttrs := []g.Node{
+		g.Attr("method", "post"), g.Attr("action", "/data/import"),
+		g.Attr("enctype", "multipart/form-data"),
+	}
+	if confirmJS != "" {
+		formAttrs = append(formAttrs, g.Attr("onsubmit", confirmJS))
+	}
+
+	return h.Div(h.Class("card mb-4"),
+		h.Div(h.Class("card-body"),
+			h.H5(h.Class("card-title"), g.Text("JSON-Import")),
+			h.P(h.Class("text-muted"), g.Text("Importiert eine zuvor exportierte JSON-Datei.")),
+			h.FormEl(append(formAttrs,
+				h.Div(h.Class("row g-3 align-items-end"),
+					h.Div(h.Class("col"),
+						h.Label(h.Class("form-label"), g.Text("Datei")),
+						h.Input(h.Class("form-control"),
+							g.Attr("type", "file"), g.Attr("name", "file"),
+							g.Attr("accept", ".json")),
+					),
+					h.Div(h.Class("col-auto"),
+						h.Button(h.Class("btn btn-primary"), g.Attr("type", "submit"),
+							g.Text("Importieren")),
+					),
+				),
+				g.Group(overwriteNodes),
+			)...),
+		),
+	)
 }
 
 func positionsCard(positions []store.Position) g.Node {

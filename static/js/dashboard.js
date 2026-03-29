@@ -14,6 +14,12 @@ document.addEventListener('alpine:init', () => {
         recentGamesLimit: localStorage.getItem('db_recentGamesLimit') || '10',
         today: new Date().toISOString().slice(0, 10),
 
+        // Helpers for computed fields from structured game data
+        gameYear(g) { return g.game_date ? g.game_date.slice(0, 4) : ''; },
+        gameMonth(g) { return g.game_date ? g.game_date.slice(5, 7) : ''; },
+        venueLabel(g) { return (g.venue && (g.venue.short_name || g.venue.city)) || ''; },
+        leagueLabel(g) { return (g.league && (g.league.short_name || g.league.name)) || ''; },
+
         togglePosition(arr, p) {
             var i = arr.indexOf(p);
             if (i >= 0) arr.splice(i, 1); else arr.push(p);
@@ -21,8 +27,8 @@ document.addEventListener('alpine:init', () => {
 
         get filtered() {
             return this.games.filter(g => {
-                if (this.onlyCompleted && g.date >= this.today) return false;
-                if (this.filterLeague && g.league_id != this.filterLeague) return false;
+                if (this.onlyCompleted && g.game_date >= this.today) return false;
+                if (this.filterLeague && g.league.id != this.filterLeague) return false;
                 if (this.filterPositions.length
                     && !this.filterPositions.includes(g.position)) return false;
                 return true;
@@ -31,35 +37,35 @@ document.addEventListener('alpine:init', () => {
 
         get stats() {
             var f = this.filtered;
-            var fee = f.reduce((s, g) => s + g.fee, 0);
-            var travel = f.reduce((s, g) => s + g.travel, 0);
+            var fee = f.reduce((s, g) => s + g.referee_fee, 0);
+            var travel = f.reduce((s, g) => s + g.travel_costs, 0);
             return {
                 count: f.length,
                 fee: fee,
                 travel: travel,
                 total: fee + travel,
-                km: f.reduce((s, g) => s + g.km, 0),
+                km: f.reduce((s, g) => s + g.km_driven, 0),
             };
         },
 
         get upcomingGames() {
             return this.games
-                .filter(g => g.date >= this.today)
-                .sort((a, b) => a.date.localeCompare(b.date)
-                    || (a.time || '').localeCompare(b.time || ''));
+                .filter(g => g.game_date >= this.today)
+                .sort((a, b) => a.game_date.localeCompare(b.game_date)
+                    || (a.game_time || '').localeCompare(b.game_time || ''));
         },
 
         get recentGames() {
             var all = this.games
                 .filter(g => {
-                    if (g.date >= this.today) return false;
-                    if (this.filterLeague && g.league_id != this.filterLeague) return false;
+                    if (g.game_date >= this.today) return false;
+                    if (this.filterLeague && g.league.id != this.filterLeague) return false;
                     if (this.filterPositions.length
                         && !this.filterPositions.includes(g.position)) return false;
                     return true;
                 })
-                .sort((a, b) => b.date.localeCompare(a.date)
-                    || (b.time || '').localeCompare(a.time || ''));
+                .sort((a, b) => b.game_date.localeCompare(a.game_date)
+                    || (b.game_time || '').localeCompare(a.game_time || ''));
             var limit = parseInt(this.recentGamesLimit);
             return limit > 0 ? all.slice(0, limit) : all;
         },
@@ -81,8 +87,8 @@ document.addEventListener('alpine:init', () => {
 
         get overviewFiltered() {
             return this.overviewGames.filter(g => {
-                if (this.onlyCompleted && g.date >= this.today) return false;
-                if (this.ovFilterLeague && g.league_id != this.ovFilterLeague) return false;
+                if (this.onlyCompleted && g.game_date >= this.today) return false;
+                if (this.ovFilterLeague && g.league.id != this.ovFilterLeague) return false;
                 if (this.ovFilterPositions.length
                     && !this.ovFilterPositions.includes(g.position)) return false;
                 if (this.ovYearFrom && g.year < this.ovYearFrom) return false;
@@ -93,8 +99,8 @@ document.addEventListener('alpine:init', () => {
 
         get overviewForPositions() {
             return this.overviewGames.filter(g => {
-                if (this.onlyCompleted && g.date >= this.today) return false;
-                if (this.ovFilterLeague && g.league_id != this.ovFilterLeague) return false;
+                if (this.onlyCompleted && g.game_date >= this.today) return false;
+                if (this.ovFilterLeague && g.league.id != this.ovFilterLeague) return false;
                 if (this.ovFilterPositions.length > 1
                     && !this.ovFilterPositions.includes(g.position)) return false;
                 if (this.ovYearFrom && g.year < this.ovYearFrom) return false;
@@ -118,9 +124,9 @@ document.addEventListener('alpine:init', () => {
                 };
                 var y = byYear[g.year];
                 y.count++;
-                y.fee += g.fee;
-                y.travel += g.travel;
-                y.km += g.km;
+                y.fee += g.referee_fee;
+                y.travel += g.travel_costs;
+                y.km += g.km_driven;
                 y.by_position[g.position] =
                     (y.by_position[g.position] || 0) + 1;
             });
@@ -137,14 +143,14 @@ document.addEventListener('alpine:init', () => {
 
         get overviewStats() {
             var f = this.overviewFiltered;
-            var fee = f.reduce((s, g) => s + g.fee, 0);
-            var travel = f.reduce((s, g) => s + g.travel, 0);
+            var fee = f.reduce((s, g) => s + g.referee_fee, 0);
+            var travel = f.reduce((s, g) => s + g.travel_costs, 0);
             return {
                 count: f.length,
                 fee: fee,
                 travel: travel,
                 total: fee + travel,
-                km: f.reduce((s, g) => s + g.km, 0),
+                km: f.reduce((s, g) => s + g.km_driven, 0),
             };
         },
 
@@ -273,12 +279,22 @@ document.addEventListener('alpine:init', () => {
             this._seasonLoaded = true;
             var res = await fetch('/api/dashboard/season/' + this.season);
             var data = await res.json();
-            this.games = data.games || [];
+            this.games = (data.games || []).map(g => this._enrichGame(g));
             this.positions = data.positions || [];
             this.availableLeagues = data.available_leagues || [];
             this.availablePositions = data.available_positions || [];
             this.loading = false;
             this.$nextTick(() => this.renderCharts());
+        },
+
+        _enrichGame(g) {
+            g.year = this.gameYear(g);
+            g.month = this.gameMonth(g);
+            g.venue_label = this.venueLabel(g);
+            g.league_label = this.leagueLabel(g);
+            g.home = g.home_team ? g.home_team.name : '';
+            g.away = g.away_team ? g.away_team.name : '';
+            return g;
         },
 
         renderCharts() {
@@ -297,9 +313,9 @@ document.addEventListener('alpine:init', () => {
             this.renderMonthlyChart();
             this.renderLeagueChart();
             this.renderCalendarHeatmap();
-            this.renderFeeBar('chart-fee-total', g => g.fee + g.travel);
-            this.renderFeeBar('chart-fee-base', g => g.fee);
-            this.renderFeeBar('chart-fee-travel', g => g.travel);
+            this.renderFeeBar('chart-fee-total', g => g.referee_fee + g.travel_costs);
+            this.renderFeeBar('chart-fee-base', g => g.referee_fee);
+            this.renderFeeBar('chart-fee-travel', g => g.travel_costs);
             this.renderVenueTop('chart-venues-top', f);
             this.renderMap('chart-map', f);
         },
@@ -358,8 +374,8 @@ document.addEventListener('alpine:init', () => {
         renderPositionChart() {
             var colors = ['#5E81AC','#81A1C1','#88C0D0','#8FBCBB','#A3BE8C','#EBCB8B','#D08770','#BF616A','#B48EAD'];
             var games = this.games.filter(g => {
-                if (this.onlyCompleted && g.date >= this.today) return false;
-                if (this.filterLeague && g.league_id != this.filterLeague) return false;
+                if (this.onlyCompleted && g.game_date >= this.today) return false;
+                if (this.filterLeague && g.league.id != this.filterLeague) return false;
                 if (this.filterPositions.length > 1
                     && !this.filterPositions.includes(g.position)) return false;
                 return true;
@@ -440,7 +456,7 @@ document.addEventListener('alpine:init', () => {
         renderLeagueChart() {
             var colors = ['#5E81AC','#81A1C1','#88C0D0','#8FBCBB','#A3BE8C','#EBCB8B','#D08770','#BF616A','#B48EAD'];
             var games = this.games.filter(g => {
-                if (this.onlyCompleted && g.date >= this.today) return false;
+                if (this.onlyCompleted && g.game_date >= this.today) return false;
                 if (this.filterPositions.length
                     && !this.filterPositions.includes(g.position)) return false;
                 return true;
@@ -448,9 +464,9 @@ document.addEventListener('alpine:init', () => {
             var leagueData = {};
             var posPresent = new Set();
             games.forEach(g => {
-                leagueData[g.league] = leagueData[g.league] || {};
-                leagueData[g.league][g.position] =
-                    (leagueData[g.league][g.position] || 0) + 1;
+                leagueData[g.league_label] = leagueData[g.league_label] || {};
+                leagueData[g.league_label][g.position] =
+                    (leagueData[g.league_label][g.position] || 0) + 1;
                 posPresent.add(g.position);
             });
             var leagues = Object.entries(leagueData)
@@ -497,7 +513,7 @@ document.addEventListener('alpine:init', () => {
             var posData = {};
             games.forEach(g => {
                 if (!posData[g.position]) posData[g.position] = {};
-                posData[g.position][g.league] = (posData[g.position][g.league] || 0) + 1;
+                posData[g.position][g.league_label] = (posData[g.position][g.league_label] || 0) + 1;
             });
 
             var posOrder = this.positions.filter(p => posData[p]);
@@ -570,7 +586,7 @@ document.addEventListener('alpine:init', () => {
             }
             var res = await fetch('/api/dashboard/overview');
             var data = await res.json();
-            this.overviewGames = data.games;
+            this.overviewGames = (data.games || []).map(g => this._enrichGame(g));
             this.overviewPositions = data.positions;
             this.overviewLeagues = data.available_leagues;
             this.ovFilterLeague = localStorage.getItem('db_ovFilterLeague') || '';
@@ -738,7 +754,7 @@ document.addEventListener('alpine:init', () => {
         renderOverviewLeagues() {
             var colors = ['#5E81AC','#81A1C1','#88C0D0','#8FBCBB','#A3BE8C','#EBCB8B','#D08770','#BF616A','#B48EAD'];
             var games = this.overviewGames.filter(g => {
-                if (this.onlyCompleted && g.date >= this.today) return false;
+                if (this.onlyCompleted && g.game_date >= this.today) return false;
                 if (this.ovFilterPositions.length
                     && !this.ovFilterPositions.includes(g.position)) return false;
                 if (this.ovYearFrom && g.year < this.ovYearFrom) return false;
@@ -752,12 +768,12 @@ document.addEventListener('alpine:init', () => {
             var years = [...seenYears].sort();
 
             var leagueTotals = {};
-            games.forEach(g => { leagueTotals[g.league] = (leagueTotals[g.league] || 0) + 1; });
+            games.forEach(g => { leagueTotals[g.league_label] = (leagueTotals[g.league_label] || 0) + 1; });
             var leagues = Object.keys(leagueTotals).sort((a, b) => leagueTotals[b] - leagueTotals[a]);
 
             var counts = {};
             games.forEach(g => {
-                var key = g.league + '|' + g.year;
+                var key = g.league_label + '|' + g.year;
                 counts[key] = (counts[key] || 0) + 1;
             });
 
@@ -1017,8 +1033,8 @@ document.addEventListener('alpine:init', () => {
             // Group games by date
             var byDate = {};
             games.forEach(g => {
-                if (!byDate[g.date]) byDate[g.date] = [];
-                byDate[g.date].push(g);
+                if (!byDate[g.game_date]) byDate[g.game_date] = [];
+                byDate[g.game_date].push(g);
             });
 
             // Calendar data: [date, count, dominantPosition]
@@ -1062,7 +1078,7 @@ document.addEventListener('alpine:init', () => {
                             var color = posColorMap[g.position] || '#888';
                             lines.push('<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + color + ';margin-right:4px"></span>'
                                 + g.position + ' — ' + (g.home || '?') + ' vs ' + (g.away || '?')
-                                + (g.venue ? ' <span style="color:#999">(' + g.venue + ')</span>' : ''));
+                                + (g.venue_label ? ' <span style="color:#999">(' + g.venue_label + ')</span>' : ''));
                         });
                         return lines.join('<br>');
                     },
@@ -1168,7 +1184,7 @@ document.addEventListener('alpine:init', () => {
             var colors = ['#5E81AC','#81A1C1','#88C0D0','#8FBCBB','#A3BE8C','#EBCB8B','#D08770','#BF616A','#B48EAD'];
             var counts = {};
             games.forEach(g => {
-                var venue = g.venue || '';
+                var venue = g.venue_label || '';
                 if (!venue) return;
                 var city = venue.split(', ')[0];
                 counts[city] = (counts[city] || 0) + 1;
@@ -1225,10 +1241,10 @@ document.addEventListener('alpine:init', () => {
             var dark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
             var venues = {};
             games.forEach(g => {
-                if (!g.venue_lat || !g.venue_lon || (g.venue_lat === 0 && g.venue_lon === 0)) return;
-                var key = g.venue_lat.toFixed(4) + ',' + g.venue_lon.toFixed(4);
+                if (!g.venue.lat || !g.venue.lon || (g.venue.lat === 0 && g.venue.lon === 0)) return;
+                var key = g.venue.lat.toFixed(4) + ',' + g.venue.lon.toFixed(4);
                 if (!venues[key]) {
-                    venues[key] = {lat: g.venue_lat, lon: g.venue_lon, name: g.venue || '', count: 0};
+                    venues[key] = {lat: g.venue.lat, lon: g.venue.lon, name: g.venue_label || '', count: 0};
                 }
                 venues[key].count++;
             });

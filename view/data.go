@@ -10,7 +10,7 @@ import (
 	"github.com/axelrhd/referee-dashboard/store"
 )
 
-func DataPage(w http.ResponseWriter, r *http.Request, positions []store.Position, hasData bool, messages []string) g.Node {
+func DataPage(w http.ResponseWriter, r *http.Request, positions []store.Position, hasData bool, seasons []string, messages []string) g.Node {
 	var alerts []g.Node
 	for _, msg := range messages {
 		alerts = append(alerts, h.Div(h.Class("alert alert-success alert-dismissible fade show"),
@@ -51,11 +51,87 @@ func DataPage(w http.ResponseWriter, r *http.Request, positions []store.Position
 
 		// Positions
 		positionsCard(positions),
+
+		// API Endpoints
+		apiCard(seasons),
 	)
 }
 
 func DataPageWithMessages(w http.ResponseWriter, r *http.Request, messages []string) g.Node {
-	return DataPage(w, r, nil, false, messages)
+	return DataPage(w, r, nil, false, nil, messages)
+}
+
+func apiCard(seasons []string) g.Node {
+	apiLink := func(label, path string) g.Node {
+		return h.Tr(
+			h.Td(h.Code(g.Text(path))),
+			h.Td(
+				h.A(h.Class("btn btn-sm btn-outline-secondary"),
+					g.Attr("href", path), g.Attr("target", "_blank"),
+					g.Text(label)),
+			),
+		)
+	}
+
+	var rows []g.Node
+	rows = append(rows,
+		apiLink("Ligen", "/api/leagues"),
+		apiLink("Teams", "/api/teams"),
+		apiLink("Spielorte", "/api/venues"),
+		apiLink("Spiele", "/api/games"),
+		apiLink("Dashboard Übersicht", "/api/dashboard/overview"),
+	)
+
+	// Season links with dropdown
+	var seasonNodes []g.Node
+	if len(seasons) > 0 {
+		var opts []g.Node
+		for _, s := range seasons {
+			opts = append(opts, h.Option(g.Attr("value", s), g.Text(s)))
+		}
+		seasonNodes = []g.Node{
+			h.Tr(
+				h.Td(h.Code(g.Attr("x-text", "'/api/dashboard/season/' + apiSeason"), g.Text("/api/dashboard/season/"+seasons[0]))),
+				h.Td(h.Class("d-flex align-items-center gap-2"),
+					h.Select(h.Class("form-select form-select-sm"), g.Attr("style", "width:auto"),
+						g.Attr("x-model", "apiSeason"),
+						g.Group(opts),
+					),
+					h.A(h.Class("btn btn-sm btn-outline-secondary"),
+						g.Attr("target", "_blank"),
+						g.Attr(":href", "'/api/dashboard/season/' + apiSeason"),
+						g.Text("Öffnen")),
+				),
+			),
+		}
+	}
+
+	return h.Div(h.Class("card mb-4"),
+		g.Attr("x-data", fmt.Sprintf("{ apiSeason: '%s' }", firstOrEmpty(seasons))),
+		h.Div(h.Class("card-body"),
+			h.H5(h.Class("card-title"), g.Text("API Endpoints")),
+			h.P(h.Class("text-muted"), g.Text("Direkte Links zu den JSON-API-Endpoints.")),
+			h.Table(h.Class("table table-sm mb-0"),
+				h.THead(
+					h.Tr(
+						h.Th(g.Text("Endpoint")),
+						h.Th(g.Text("")),
+					),
+				),
+				h.TBody(
+					g.Group(rows),
+					g.Group(seasonNodes),
+				),
+			),
+		),
+	)
+}
+
+func firstOrEmpty(s []string) string {
+	if len(s) > 0 {
+		return s[0]
+	}
+	return ""
 }
 
 func importCard(hasData bool) g.Node {

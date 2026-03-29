@@ -32,7 +32,8 @@ func (h *DataHandler) Routes(r chi.Router) {
 func (dh *DataHandler) Page(w http.ResponseWriter, r *http.Request) {
 	positions, _ := dh.s.ListPositions()
 	games, _ := dh.s.ListGames()
-	page := view.DataPage(w, r, positions, len(games) > 0, nil)
+	seasons, _ := dh.s.ListSeasons()
+	page := view.DataPage(w, r, positions, len(games) > 0, seasons, nil)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	page.Render(w)
 }
@@ -65,7 +66,8 @@ func (dh *DataHandler) Import(w http.ResponseWriter, r *http.Request) {
 
 	if err := dh.s.ImportJSON(file); err != nil {
 		positions, _ := dh.s.ListPositions()
-		page := view.DataPage(w, r, positions, len(games) > 0, []string{fmt.Sprintf("Import-Fehler: %v", err)})
+		seasons, _ := dh.s.ListSeasons()
+		page := view.DataPage(w, r, positions, len(games) > 0, seasons, []string{fmt.Sprintf("Import-Fehler: %v", err)})
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		page.Render(w)
 		return

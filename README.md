@@ -57,13 +57,27 @@
 
 **No npm, no build step, no templates** — HTML is generated server-side with [gomponents](https://maragu.dev/gomponents), assets loaded via CDN.
 
-## Prerequisites
+## Quick Start (Release Binary)
+
+No Go installation required. Download the binary for your platform from the [Releases](https://github.com/AxelRHD/go-referee-dashboard/releases) page and run it:
+
+```bash
+./referee-dashboard
+```
+
+The app starts on [http://localhost:3000](http://localhost:3000). On first start, the setup wizard guides you through importing seed data.
+
+Available platforms: Linux, macOS, Windows — each for amd64 and arm64.
+
+## Development
+
+### Prerequisites
 
 - [Go 1.26+](https://go.dev/)
 - [just](https://just.systems/) — command runner
 - [air](https://github.com/air-verse/air) — hot-reload dev server (optional)
 
-## Getting Started
+### Getting Started
 
 ```bash
 # Clone the repository
@@ -76,8 +90,6 @@ just dev
 # Or without air
 go run ./cmd serve
 ```
-
-The app will be available at [http://localhost:3000](http://localhost:3000).
 
 ### First Start — Setup Wizard
 

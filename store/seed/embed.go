@@ -2,5 +2,5 @@ package seed
 
 import "embed"
 
-//go:embed *.sql
+//go:embed *.json
 var Files embed.FS

@@ -1,7 +1,6 @@
 package server
 
 import (
-	"database/sql"
 	"log"
 	"net/http"
 	"strings"
@@ -11,18 +10,14 @@ import (
 
 	"github.com/axelrhd/referee-dashboard/config"
 	"github.com/axelrhd/referee-dashboard/handler"
-	"github.com/axelrhd/referee-dashboard/model"
+	"github.com/axelrhd/referee-dashboard/store"
 )
 
-func NewServer(cfg config.Config) http.Handler {
-	db, err := sql.Open("sqlite", cfg.DBPath)
+func NewServer(cfg config.Config) (http.Handler, *store.Store) {
+	s, err := store.Open(cfg.DBPath)
 	if err != nil {
 		log.Fatalf("open db: %v", err)
 	}
-	db.Exec("PRAGMA journal_mode=WAL")
-	db.Exec("PRAGMA foreign_keys=ON")
-
-	queries := model.New(db)
 
 	r := chi.NewRouter()
 
@@ -31,7 +26,7 @@ func NewServer(cfg config.Config) http.Handler {
 	r.Use(middleware.StripSlashes)
 
 	// Setup handler + redirect middleware
-	setup := handler.NewSetupHandler(db)
+	setup := handler.NewSetupHandler(s)
 
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -64,22 +59,22 @@ func NewServer(cfg config.Config) http.Handler {
 		http.Redirect(w, r, "/dashboard/", http.StatusFound)
 	})
 
-	leagues := handler.NewLeagueHandler(queries)
+	leagues := handler.NewLeagueHandler(s)
 	leagues.Routes(r)
 
-	teams := handler.NewTeamHandler(queries)
+	teams := handler.NewTeamHandler(s)
 	teams.Routes(r)
 
-	venues := handler.NewVenueHandler(queries)
+	venues := handler.NewVenueHandler(s)
 	venues.Routes(r)
 
-	games := handler.NewGameHandler(queries)
+	games := handler.NewGameHandler(s)
 	games.Routes(r)
 
-	dashboard := handler.NewDashboardHandler(queries)
+	dashboard := handler.NewDashboardHandler(s)
 	dashboard.Routes(r)
 
-	data := handler.NewDataHandler(queries, db)
+	data := handler.NewDataHandler(s)
 	data.Routes(r)
 
 	r.Route("/api", func(r chi.Router) {
@@ -90,5 +85,5 @@ func NewServer(cfg config.Config) http.Handler {
 		dashboard.APIRoutes(r)
 	})
 
-	return r
+	return r, s
 }

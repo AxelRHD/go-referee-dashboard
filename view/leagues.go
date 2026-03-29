@@ -7,10 +7,10 @@ import (
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
 
-	"github.com/axelrhd/referee-dashboard/model"
+	"github.com/axelrhd/referee-dashboard/store"
 )
 
-func LeagueList(w http.ResponseWriter, r *http.Request, leagues []model.League) g.Node {
+func LeagueList(w http.ResponseWriter, r *http.Request, leagues []store.League) g.Node {
 	var rows []g.Node
 	for _, lg := range leagues {
 		rows = append(rows, h.Tr(
@@ -19,8 +19,8 @@ func LeagueList(w http.ResponseWriter, r *http.Request, leagues []model.League) 
 			h.Td(g.Text(lg.ShortName)),
 			h.Td(g.Text(lg.Remarks)),
 			ActionLinks(
-				fmt.Sprintf("/leagues/%d/edit", lg.ID),
-				fmt.Sprintf("/leagues/%d/delete", lg.ID),
+				fmt.Sprintf("/leagues/%s/edit", lg.ID),
+				fmt.Sprintf("/leagues/%s/delete", lg.ID),
 			),
 		))
 	}
@@ -44,12 +44,12 @@ func LeagueList(w http.ResponseWriter, r *http.Request, leagues []model.League) 
 	)
 }
 
-func LeagueForm(league *model.League, errors map[string]string, data map[string]string) g.Node {
+func LeagueForm(league *store.League, errors map[string]string, data map[string]string) g.Node {
 	title := "Neue Liga"
 	action := "/leagues/new"
 	if league != nil {
 		title = "Liga bearbeiten"
-		action = fmt.Sprintf("/leagues/%d/edit", league.ID)
+		action = fmt.Sprintf("/leagues/%s/edit", league.ID)
 	}
 
 	val := func(field string) string {

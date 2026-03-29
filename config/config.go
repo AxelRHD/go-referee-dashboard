@@ -6,10 +6,8 @@ import (
 )
 
 type Config struct {
-	DBPath    string `envconfig:"DB_PATH" default:"referee.db"`
-	Port      int    `envconfig:"PORT" default:"3000"`
-	Debug     bool   `envconfig:"DEBUG" default:"false"`
-	SecretKey string `envconfig:"SECRET_KEY" default:"change-me-in-production"`
+	DBPath string `envconfig:"DB_PATH" default:"referee.db"`
+	Port   int    `envconfig:"PORT" default:"3000"`
 }
 
 func Load() (Config, error) {

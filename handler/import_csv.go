@@ -1,13 +1,12 @@
 package handler
 
 import (
-	"context"
 	"encoding/csv"
 	"fmt"
 	"io"
 	"strings"
 
-	"github.com/axelrhd/referee-dashboard/model"
+	"github.com/axelrhd/referee-dashboard/store"
 	"github.com/axelrhd/referee-dashboard/validation"
 )
 
@@ -41,7 +40,7 @@ var leagueColumns = map[string]string{
 	"bemerkungen": "remarks",
 }
 
-func (dh *DataHandler) importCSV(ctx context.Context, text, entity string) (int, []string) {
+func (dh *DataHandler) importCSV(text, entity string) (int, []string) {
 	columnMap := map[string]map[string]string{
 		"games":   gameColumns,
 		"teams":   teamColumns,
@@ -82,19 +81,19 @@ func (dh *DataHandler) importCSV(ctx context.Context, text, entity string) (int,
 	}
 
 	// Build name→ID lookup maps for FK resolution
-	teams, _ := dh.q.ListTeams(ctx)
-	leagues, _ := dh.q.ListLeagues(ctx)
-	venues, _ := dh.q.ListVenues(ctx)
+	teams, _ := dh.s.ListTeams()
+	leagues, _ := dh.s.ListLeagues()
+	venues, _ := dh.s.ListVenues()
 
-	teamByName := map[string]int64{}
+	teamByName := map[string]string{}
 	for _, t := range teams {
 		teamByName[t.Name] = t.ID
 	}
-	leagueByName := map[string]int64{}
+	leagueByName := map[string]string{}
 	for _, l := range leagues {
 		leagueByName[l.Name] = l.ID
 	}
-	venueByCity := map[string]int64{}
+	venueByCity := map[string]string{}
 	for _, v := range venues {
 		venueByCity[v.City] = v.ID
 	}
@@ -132,15 +131,12 @@ func (dh *DataHandler) importCSV(ctx context.Context, text, entity string) (int,
 				errors = append(errors, fmt.Sprintf("Zeile %d: %s", lineNum, msgs))
 				continue
 			}
-			_, err := dh.q.CreateGame(ctx, model.CreateGameParams{
-				GameDate: data.GameDate, GameTime: data.GameTime,
-				HomeTeamID: data.HomeTeamID, AwayTeamID: data.AwayTeamID,
-				VenueID: data.VenueID, LeagueID: data.LeagueID,
-				Position: data.Position, RefereeFee: data.RefereeFee,
-				TravelCosts: data.TravelCosts, KmDriven: data.KmDriven,
-				Exhibition: data.Exhibition, Remarks: data.Remarks,
-			})
+			game, err := buildGameFromCSV(dh.s, data)
 			if err != nil {
+				errors = append(errors, fmt.Sprintf("Zeile %d: %v", lineNum, err))
+				continue
+			}
+			if err := dh.s.PutGame(game); err != nil {
 				errors = append(errors, fmt.Sprintf("Zeile %d: %v", lineNum, err))
 				continue
 			}
@@ -150,11 +146,10 @@ func (dh *DataHandler) importCSV(ctx context.Context, text, entity string) (int,
 				errors = append(errors, fmt.Sprintf("Zeile %d: %s", lineNum, fmtErrors(errs)))
 				continue
 			}
-			_, err := dh.q.CreateTeam(ctx, model.CreateTeamParams{
+			if err := dh.s.PutTeam(&store.Team{
 				Name: data.Name, State: data.State,
 				IsActive: data.IsActive, Remarks: data.Remarks,
-			})
-			if err != nil {
+			}); err != nil {
 				errors = append(errors, fmt.Sprintf("Zeile %d: %v", lineNum, err))
 				continue
 			}
@@ -164,11 +159,10 @@ func (dh *DataHandler) importCSV(ctx context.Context, text, entity string) (int,
 				errors = append(errors, fmt.Sprintf("Zeile %d: %s", lineNum, fmtErrors(errs)))
 				continue
 			}
-			_, err := dh.q.CreateLeague(ctx, model.CreateLeagueParams{
+			if err := dh.s.PutLeague(&store.League{
 				Name: data.Name, ShortName: data.ShortName,
-				Sorter: data.Sorter, Remarks: data.Remarks,
-			})
-			if err != nil {
+				Sorter: int(data.Sorter), Remarks: data.Remarks,
+			}); err != nil {
 				errors = append(errors, fmt.Sprintf("Zeile %d: %v", lineNum, err))
 				continue
 			}
@@ -179,6 +173,44 @@ func (dh *DataHandler) importCSV(ctx context.Context, text, entity string) (int,
 	return count, errors
 }
 
+func buildGameFromCSV(s *store.Store, data validation.GameData) (*store.Game, error) {
+	homeTeam, err := s.GetTeam(data.HomeTeamID)
+	if err != nil {
+		return nil, fmt.Errorf("heimteam: %w", err)
+	}
+	awayTeam, err := s.GetTeam(data.AwayTeamID)
+	if err != nil {
+		return nil, fmt.Errorf("gastteam: %w", err)
+	}
+	league, err := s.GetLeague(data.LeagueID)
+	if err != nil {
+		return nil, fmt.Errorf("liga: %w", err)
+	}
+
+	var venueRef store.VenueRef
+	if data.VenueID != "" {
+		venue, err := s.GetVenue(data.VenueID)
+		if err != nil {
+			return nil, fmt.Errorf("spielort: %w", err)
+		}
+		venueRef = store.VenueRef{
+			ID: venue.ID, City: venue.City, ShortName: venue.ShortName,
+			Lat: venue.Lat, Lon: venue.Lon,
+		}
+	}
+
+	return &store.Game{
+		GameDate: data.GameDate, GameTime: data.GameTime,
+		HomeTeam: store.TeamRef{ID: homeTeam.ID, Name: homeTeam.Name},
+		AwayTeam: store.TeamRef{ID: awayTeam.ID, Name: awayTeam.Name},
+		Venue:    venueRef,
+		League:   store.LeagueRef{ID: league.ID, Name: league.Name, ShortName: league.ShortName},
+		Position: data.Position, RefereeFee: data.RefereeFee,
+		TravelCosts: data.TravelCosts, KmDriven: int(data.KmDriven),
+		Exhibition: data.Exhibition, Remarks: data.Remarks,
+	}, nil
+}
+
 func normalizeKey(key string) string {
 	key = strings.TrimSpace(strings.ToLower(key))
 	key = strings.ReplaceAll(key, " ", "")
@@ -186,7 +218,7 @@ func normalizeKey(key string) string {
 	return key
 }
 
-func transformCSVValue(field, val string, teamByName map[string]int64, leagueByName map[string]int64, venueByCity map[string]int64) string {
+func transformCSVValue(field, val string, teamByName, leagueByName, venueByCity map[string]string) string {
 	val = strings.TrimSpace(val)
 
 	switch field {
@@ -204,15 +236,15 @@ func transformCSVValue(field, val string, teamByName map[string]int64, leagueByN
 		}
 	case "home_team_id", "away_team_id":
 		if id, ok := teamByName[val]; ok {
-			val = fmt.Sprintf("%d", id)
+			val = id
 		}
 	case "league_id":
 		if id, ok := leagueByName[val]; ok {
-			val = fmt.Sprintf("%d", id)
+			val = id
 		}
 	case "venue_id":
 		if id, ok := venueByCity[val]; ok {
-			val = fmt.Sprintf("%d", id)
+			val = id
 		}
 	}
 

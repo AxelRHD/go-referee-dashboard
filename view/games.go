@@ -9,17 +9,10 @@ import (
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
 
-	"github.com/axelrhd/referee-dashboard/model"
+	"github.com/axelrhd/referee-dashboard/store"
 )
 
 const gamesPerPage = 25
-
-var monthNames = map[string]string{
-	"01": "Januar", "02": "Februar", "03": "März",
-	"04": "April", "05": "Mai", "06": "Juni",
-	"07": "Juli", "08": "August", "09": "September",
-	"10": "Oktober", "11": "November", "12": "Dezember",
-}
 
 func eurFormat(v float64) string {
 	s := fmt.Sprintf("%.2f", v)
@@ -42,15 +35,15 @@ type GameStats struct {
 	Count       int
 	TotalFee    float64
 	TotalTravel float64
-	TotalKm     int64
+	TotalKm     int
 	Positions   map[string]int
 }
 
 type FilterOptions struct {
 	Seasons   []string
 	Months    []struct{ Value, Label string }
-	Leagues   []model.League
-	Positions []model.Position
+	Leagues   []store.League
+	Positions []store.Position
 }
 
 type GameFilters struct {
@@ -62,7 +55,7 @@ type GameFilters struct {
 	Page     int
 }
 
-func GameList(w http.ResponseWriter, r *http.Request, games []model.ListGamesRow, stats GameStats, filters GameFilters, opts FilterOptions) g.Node {
+func GameList(w http.ResponseWriter, r *http.Request, games []store.Game, stats GameStats, filters GameFilters, opts FilterOptions) g.Node {
 	return BasePage("Spiele",
 		FlashAlert(w, r),
 		h.H1(g.Text("Spiele")),
@@ -101,8 +94,8 @@ func filterBar(f GameFilters, opts FilterOptions) g.Node {
 
 	leagueOpts := []g.Node{h.Option(g.Attr("value", ""), g.Text("Alle"))}
 	for _, l := range opts.Leagues {
-		attrs := []g.Node{g.Attr("value", fmt.Sprintf("%d", l.ID))}
-		if fmt.Sprintf("%d", l.ID) == f.LeagueID {
+		attrs := []g.Node{g.Attr("value", l.ID)}
+		if l.ID == f.LeagueID {
 			attrs = append(attrs, g.Attr("selected", ""))
 		}
 		leagueOpts = append(leagueOpts, h.Option(append(attrs, g.Text(l.Name))...))
@@ -159,7 +152,7 @@ func filterBar(f GameFilters, opts FilterOptions) g.Node {
 	)
 }
 
-func GameTable(games []model.ListGamesRow, stats GameStats, f GameFilters) g.Node {
+func GameTable(games []store.Game, stats GameStats, f GameFilters) g.Node {
 	total := len(games)
 	totalPages := int(math.Max(1, math.Ceil(float64(total)/float64(gamesPerPage))))
 	page := f.Page
@@ -178,27 +171,22 @@ func GameTable(games []model.ListGamesRow, stats GameStats, f GameFilters) g.Nod
 
 	var rows []g.Node
 	for _, gm := range pageGames {
-		venueDisplay := ""
-		if gm.VenueStadium != "" && gm.VenueCity != "" {
-			venueDisplay = gm.VenueCity + ", " + gm.VenueStadium
-		} else if gm.VenueCity != "" {
-			venueDisplay = gm.VenueCity
-		}
+		venueDisplay := gm.Venue.City
 		totalFee := gm.RefereeFee + gm.TravelCosts
 		rows = append(rows, h.Tr(
 			h.Td(g.Text(gm.GameDate)),
 			h.Td(g.Text(gm.GameTime)),
 			h.Td(g.Text(gm.Position)),
-			h.Td(g.Text(gm.LeagueName)),
-			h.Td(g.Text(gm.HomeTeamName)),
-			h.Td(g.Text(gm.AwayTeamName)),
+			h.Td(g.Text(gm.League.Name)),
+			h.Td(g.Text(gm.HomeTeam.Name)),
+			h.Td(g.Text(gm.AwayTeam.Name)),
 			h.Td(g.Text(venueDisplay)),
 			h.Td(h.Class("text-end"), g.Text(eurFormat(gm.RefereeFee))),
 			h.Td(h.Class("text-end"), g.Text(eurFormat(gm.TravelCosts))),
 			h.Td(h.Class("text-end"), g.Text(eurFormat(totalFee))),
 			ActionLinks(
-				fmt.Sprintf("/games/%d/edit", gm.ID),
-				fmt.Sprintf("/games/%d/delete", gm.ID),
+				fmt.Sprintf("/games/%s/edit", gm.ID),
+				fmt.Sprintf("/games/%s/delete", gm.ID),
 			),
 		))
 	}
@@ -314,14 +302,14 @@ func pagination(page, totalPages int, f GameFilters) g.Node {
 	)
 }
 
-func GameForm(game *model.Game, errors map[string]string, data map[string]string,
-	teams []model.Team, leagues []model.League, positions []model.Position, venues []model.Venue) g.Node {
+func GameForm(game *store.Game, errors map[string]string, data map[string]string,
+	teams []store.Team, leagues []store.League, positions []store.Position, venues []store.Venue) g.Node {
 
 	title := "Neues Spiel"
 	action := "/games/new"
 	if game != nil {
 		title = "Spiel bearbeiten"
-		action = fmt.Sprintf("/games/%d/edit", game.ID)
+		action = fmt.Sprintf("/games/%s/edit", game.ID)
 	}
 
 	val := func(field string) string {
@@ -342,16 +330,13 @@ func GameForm(game *model.Game, errors map[string]string, data map[string]string
 		case "game_time":
 			return game.GameTime
 		case "home_team_id":
-			return fmt.Sprintf("%d", game.HomeTeamID)
+			return game.HomeTeam.ID
 		case "away_team_id":
-			return fmt.Sprintf("%d", game.AwayTeamID)
+			return game.AwayTeam.ID
 		case "venue_id":
-			if game.VenueID != 0 {
-				return fmt.Sprintf("%d", game.VenueID)
-			}
-			return ""
+			return game.Venue.ID
 		case "league_id":
-			return fmt.Sprintf("%d", game.LeagueID)
+			return game.League.ID
 		case "position":
 			return game.Position
 		case "referee_fee":
@@ -361,7 +346,10 @@ func GameForm(game *model.Game, errors map[string]string, data map[string]string
 		case "km_driven":
 			return fmt.Sprintf("%d", game.KmDriven)
 		case "exhibition":
-			return fmt.Sprintf("%d", game.Exhibition)
+			if game.Exhibition {
+				return "1"
+			}
+			return ""
 		case "remarks":
 			return game.Remarks
 		}
@@ -379,8 +367,8 @@ func GameForm(game *model.Game, errors map[string]string, data map[string]string
 	teamSelect := func(name string) g.Node {
 		opts := []g.Node{h.Option(g.Attr("value", ""), g.Text("— Team wählen —"))}
 		for _, t := range teams {
-			attrs := []g.Node{g.Attr("value", fmt.Sprintf("%d", t.ID))}
-			if fmt.Sprintf("%d", t.ID) == val(name) {
+			attrs := []g.Node{g.Attr("value", t.ID)}
+			if t.ID == val(name) {
 				attrs = append(attrs, g.Attr("selected", ""))
 			}
 			opts = append(opts, h.Option(append(attrs, g.Text(t.Name))...))
@@ -398,8 +386,8 @@ func GameForm(game *model.Game, errors map[string]string, data map[string]string
 		if v.Stadium != "" {
 			display = v.City + ", " + v.Stadium
 		}
-		attrs := []g.Node{g.Attr("value", fmt.Sprintf("%d", v.ID))}
-		if fmt.Sprintf("%d", v.ID) == val("venue_id") {
+		attrs := []g.Node{g.Attr("value", v.ID)}
+		if v.ID == val("venue_id") {
 			attrs = append(attrs, g.Attr("selected", ""))
 		}
 		venueOpts = append(venueOpts, h.Option(append(attrs, g.Text(display))...))
@@ -407,8 +395,8 @@ func GameForm(game *model.Game, errors map[string]string, data map[string]string
 
 	leagueOpts := []g.Node{h.Option(g.Attr("value", ""), g.Text("— Liga wählen —"))}
 	for _, l := range leagues {
-		attrs := []g.Node{g.Attr("value", fmt.Sprintf("%d", l.ID))}
-		if fmt.Sprintf("%d", l.ID) == val("league_id") {
+		attrs := []g.Node{g.Attr("value", l.ID)}
+		if l.ID == val("league_id") {
 			attrs = append(attrs, g.Attr("selected", ""))
 		}
 		leagueOpts = append(leagueOpts, h.Option(append(attrs, g.Text(l.Name))...))

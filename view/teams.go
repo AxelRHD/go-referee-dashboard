@@ -7,15 +7,15 @@ import (
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
 
-	"github.com/axelrhd/referee-dashboard/model"
+	"github.com/axelrhd/referee-dashboard/store"
 	"github.com/axelrhd/referee-dashboard/validation"
 )
 
-func TeamList(w http.ResponseWriter, r *http.Request, teams []model.Team) g.Node {
+func TeamList(w http.ResponseWriter, r *http.Request, teams []store.Team) g.Node {
 	var rows []g.Node
 	for _, t := range teams {
 		active := "Nein"
-		if t.IsActive == 1 {
+		if t.IsActive {
 			active = "Ja"
 		}
 		rows = append(rows, h.Tr(
@@ -24,8 +24,8 @@ func TeamList(w http.ResponseWriter, r *http.Request, teams []model.Team) g.Node
 			h.Td(g.Text(active)),
 			h.Td(g.Text(t.Remarks)),
 			ActionLinks(
-				fmt.Sprintf("/teams/%d/edit", t.ID),
-				fmt.Sprintf("/teams/%d/delete", t.ID),
+				fmt.Sprintf("/teams/%s/edit", t.ID),
+				fmt.Sprintf("/teams/%s/delete", t.ID),
 			),
 		))
 	}
@@ -49,12 +49,12 @@ func TeamList(w http.ResponseWriter, r *http.Request, teams []model.Team) g.Node
 	)
 }
 
-func TeamForm(team *model.Team, errors map[string]string, data map[string]string) g.Node {
+func TeamForm(team *store.Team, errors map[string]string, data map[string]string) g.Node {
 	title := "Neues Team"
 	action := "/teams/new"
 	if team != nil {
 		title = "Team bearbeiten"
-		action = fmt.Sprintf("/teams/%d/edit", team.ID)
+		action = fmt.Sprintf("/teams/%s/edit", team.ID)
 	}
 
 	val := func(field string) string {
@@ -78,7 +78,10 @@ func TeamForm(team *model.Team, errors map[string]string, data map[string]string
 		case "state":
 			return team.State
 		case "is_active":
-			return fmt.Sprintf("%d", team.IsActive)
+			if team.IsActive {
+				return "1"
+			}
+			return ""
 		case "remarks":
 			return team.Remarks
 		}

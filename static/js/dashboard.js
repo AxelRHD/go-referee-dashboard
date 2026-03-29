@@ -164,18 +164,10 @@ document.addEventListener('alpine:init', () => {
                     .then(geo => {
                         echarts.registerMap('Germany', geo);
                         this._germanyMapLoaded = true;
-                        // Re-render all maps now that geo is available
+                        // Trigger re-render for maps
                         this.$nextTick(() => {
-                            if (this.chartLib === 'echarts') {
-                                if (this.games.length) {
-                                    this.renderMap('chart-map', this.filtered);
-                                    this.renderVenueTop('chart-venues-top', this.filtered);
-                                }
-                                if (this.view === 'overview' && this.overviewLoaded) {
-                                    this.renderMap('chart-overview-map', this.overviewFiltered);
-                                    this.renderVenueTop('chart-overview-venues-top', this.overviewFiltered);
-                                }
-                            }
+                            this.renderCharts();
+                            if (this.overviewLoaded) this.renderOverviewCharts();
                         });
                     });
             }
@@ -265,6 +257,14 @@ document.addEventListener('alpine:init', () => {
 
         _seasonLoaded: false,
         async loadSeason() {
+            if (!this.season) {
+                this.games = [];
+                this.positions = [];
+                this.availableLeagues = [];
+                this.availablePositions = [];
+                this.loading = false;
+                return;
+            }
             this.loading = true;
             if (this._seasonLoaded) {
                 this.filterLeague = '';
@@ -273,10 +273,10 @@ document.addEventListener('alpine:init', () => {
             this._seasonLoaded = true;
             var res = await fetch('/api/dashboard/season/' + this.season);
             var data = await res.json();
-            this.games = data.games;
-            this.positions = data.positions;
-            this.availableLeagues = data.available_leagues;
-            this.availablePositions = data.available_positions;
+            this.games = data.games || [];
+            this.positions = data.positions || [];
+            this.availableLeagues = data.available_leagues || [];
+            this.availablePositions = data.available_positions || [];
             this.loading = false;
             this.$nextTick(() => this.renderCharts());
         },
@@ -1243,12 +1243,14 @@ document.addEventListener('alpine:init', () => {
 
             var lats = entries.map(e => e.lat);
             var lons = entries.map(e => e.lon);
-            // Padding around data bounds
-            var pad = 0;
-            var minLon = Math.min(...lons) - pad;
-            var maxLon = Math.max(...lons) + pad;
-            var minLat = Math.min(...lats) - pad;
-            var maxLat = Math.max(...lats) + pad;
+            // Padding around data bounds (minimum 1 degree for single-point)
+            var lonRange = Math.max(Math.max(...lons) - Math.min(...lons), 1);
+            var latRange = Math.max(Math.max(...lats) - Math.min(...lats), 1);
+            var pad = 0.2;
+            var minLon = Math.min(...lons) - lonRange * pad;
+            var maxLon = Math.max(...lons) + lonRange * pad;
+            var minLat = Math.min(...lats) - latRange * pad;
+            var maxLat = Math.max(...lats) + latRange * pad;
 
             // Find which Bundesländer have venues using geo containPoint
             var chart = this.ecInit(chartId, 500);

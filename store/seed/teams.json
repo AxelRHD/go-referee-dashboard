@@ -1,0 +1,357 @@
+[
+  {
+    "name": "Aalen Legions",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Albershausen Crusaders",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Albstadt Alligators",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Allgäu Commets",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Alzey Lions",
+    "state": "Rheinland-Pfalz",
+    "is_active": true
+  },
+  {
+    "name": "Backnang Wolverines",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Bad Homburg Sentinels",
+    "state": "Hessen",
+    "is_active": true
+  },
+  {
+    "name": "Bad Mergentheim Wolfpack",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Badener Greifs",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Balingen Bucks",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Berlin Kobras",
+    "state": "Berlin",
+    "is_active": true
+  },
+  {
+    "name": "Biberach Beavers",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Bondorf Bulls",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Bretten Black Panthers",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Bruchsal Rebels",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Bürstadt Redskins",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Cologne Crocodiles",
+    "state": "Nordrhein-Westfalen",
+    "is_active": true
+  },
+  {
+    "name": "Crailsheim Praetorians",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Diverse",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Eppelheim Jaguars",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Esslingen Racoons",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Fellbach Warriors",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Freiburg Sacristans",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Fursty Razorbacks",
+    "state": "Bayern",
+    "is_active": true
+  },
+  {
+    "name": "Gießen Golden Dragons",
+    "state": "Hessen",
+    "is_active": true
+  },
+  {
+    "name": "Harthausen Mustangs",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Hassloch 8-Balls",
+    "state": "Rheinland-Pfalz",
+    "is_active": true
+  },
+  {
+    "name": "Heidelberg Hunters",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Heilbronn Salt Miners",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Hellenstein Rascals",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Herrenberg Raptors",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Holzgerlingen Twister",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "KIT SC Engineers",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Kaiserslautern Pikes",
+    "state": "Rheinland-Pfalz",
+    "is_active": true
+  },
+  {
+    "name": "Kirchdorf Wildcats",
+    "state": "Bayern",
+    "is_active": true
+  },
+  {
+    "name": "Konstanz Pirates",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Kornwestheim Cougars",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Kuchen Mammuts",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Kurpfalz Bears",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Leonberg Alligators",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Leonberg Alligators 2",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Ludwigsburg Bulldogs",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Mainz Golden Eagles",
+    "state": "Rheinland-Pfalz",
+    "is_active": true
+  },
+  {
+    "name": "Mannheim Bandits",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Mannheim Bandits 2",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Montabaur Fighting Farmers",
+    "state": "Rheinland-Pfalz",
+    "is_active": true
+  },
+  {
+    "name": "Munich Cowboys",
+    "state": "Bayern",
+    "is_active": true
+  },
+  {
+    "name": "Neckar Hammers",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Newtown Lions",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Nordbaden Dukes",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Pforzheim Wilddogs",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Pforzheim Wilddogs 2",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Ravensburg Razorbacks",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Ravensburg Razorbacks 2",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Regensburg Phoenix",
+    "state": "Bayern",
+    "is_active": true
+  },
+  {
+    "name": "Rettigheim Rhinos",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Reutlingen Eagles",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Reutlingen Eagles 2",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Riedlingen Storks",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Rüsselsheim Crusaders",
+    "state": "Hessen",
+    "is_active": true
+  },
+  {
+    "name": "Schwäbisch Hall Unicorns",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Schwäbisch Hall Unicorns 2",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Stuttgart Scorpions",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "TFG Typhoons",
+    "state": "Nordrhein-Westfalen",
+    "is_active": true
+  },
+  {
+    "name": "Tauberfranken Wolfpack",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Trier Stampers",
+    "state": "Rheinland-Pfalz",
+    "is_active": true
+  },
+  {
+    "name": "Tübingen Red Knights",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Unbekannt",
+    "state": "Baden-Württemberg",
+    "is_active": false
+  },
+  {
+    "name": "Walldürn Silverbacks",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Weinheim Longhorns",
+    "state": "Baden-Württemberg",
+    "is_active": true
+  },
+  {
+    "name": "Wiesbaden Phantoms",
+    "state": "Hessen",
+    "is_active": true
+  }
+]

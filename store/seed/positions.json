@@ -1,0 +1,11 @@
+[
+  {"position": "R", "long": "Referee", "sorter": 10},
+  {"position": "CJ", "long": "Center Judge", "sorter": 20},
+  {"position": "U", "long": "Umpire", "sorter": 30},
+  {"position": "LJ", "long": "Line Judge", "sorter": 40},
+  {"position": "DJ", "long": "Down Judge", "sorter": 50},
+  {"position": "LM", "long": "Linesman", "sorter": 55},
+  {"position": "BJ", "long": "Back Judge", "sorter": 60},
+  {"position": "FJ", "long": "Field Judge", "sorter": 70},
+  {"position": "SJ", "long": "Side Judge", "sorter": 80}
+]

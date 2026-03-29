@@ -7,10 +7,10 @@ import (
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
 
-	"github.com/axelrhd/referee-dashboard/model"
+	"github.com/axelrhd/referee-dashboard/store"
 )
 
-func VenueList(w http.ResponseWriter, r *http.Request, venues []model.Venue) g.Node {
+func VenueList(w http.ResponseWriter, r *http.Request, venues []store.Venue) g.Node {
 	var rows []g.Node
 	for _, v := range venues {
 		lat := ""
@@ -28,8 +28,8 @@ func VenueList(w http.ResponseWriter, r *http.Request, venues []model.Venue) g.N
 			h.Td(h.Class("text-muted"), g.Text(lat)),
 			h.Td(h.Class("text-muted"), g.Text(lon)),
 			ActionLinks(
-				fmt.Sprintf("/venues/%d/edit", v.ID),
-				fmt.Sprintf("/venues/%d/delete", v.ID),
+				fmt.Sprintf("/venues/%s/edit", v.ID),
+				fmt.Sprintf("/venues/%s/delete", v.ID),
 			),
 		))
 	}
@@ -53,12 +53,12 @@ func VenueList(w http.ResponseWriter, r *http.Request, venues []model.Venue) g.N
 	)
 }
 
-func VenueForm(venue *model.Venue, errors map[string]string, data map[string]string) g.Node {
+func VenueForm(venue *store.Venue, errors map[string]string, data map[string]string) g.Node {
 	title := "Neuer Spielort"
 	action := "/venues/new"
 	if venue != nil {
 		title = "Spielort bearbeiten"
-		action = fmt.Sprintf("/venues/%d/edit", venue.ID)
+		action = fmt.Sprintf("/venues/%s/edit", venue.ID)
 	}
 
 	val := func(field string) string {

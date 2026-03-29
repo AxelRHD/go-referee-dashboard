@@ -1,0 +1,168 @@
+[
+  {
+    "city": "Bad Mergentheim",
+    "short_name": "Bad Mergentheim",
+    "lat": 49.4922776,
+    "lon": 9.7946968,
+    "stadium": "Deutschordenstadion"
+  },
+  {
+    "city": "Bretten",
+    "short_name": "Bretten",
+    "lat": 49.0339321,
+    "lon": 8.7098721,
+    "stadium": "Withumanlage 7"
+  },
+  {
+    "city": "Bruchsal",
+    "short_name": "Bruchsal",
+    "lat": 49.1102923,
+    "lon": 8.5669595,
+    "stadium": "SV 62 Bruchsal e.V."
+  },
+  {
+    "city": "Bürstadt",
+    "short_name": "Bürstadt",
+    "lat": 49.6531823,
+    "lon": 8.4747076
+  },
+  {
+    "city": "Eppelheim",
+    "short_name": "Eppelheim",
+    "lat": 49.4025,
+    "lon": 8.63306
+  },
+  {
+    "city": "Fellbach",
+    "short_name": "Fellbach",
+    "lat": 48.8061148,
+    "lon": 9.2664095,
+    "stadium": "Max-Graser-Stadion"
+  },
+  {
+    "city": "Freiburg",
+    "short_name": "Freiburg",
+    "lat": 47.9899983,
+    "lon": 7.8855418,
+    "stadium": "FT Sportpark"
+  },
+  {
+    "city": "Gießen",
+    "short_name": "Gießen",
+    "lat": 50.5808795,
+    "lon": 8.6938161
+  },
+  {
+    "city": "Heidelberg",
+    "short_name": "Heidelberg",
+    "lat": 49.3906002,
+    "lon": 8.6682209,
+    "stadium": "Fritz-Grunebaum Sportpark"
+  },
+  {
+    "city": "Heilbronn",
+    "short_name": "Heilbronn",
+    "lat": 49.174942,
+    "lon": 9.1984905,
+    "stadium": "Sportplatz Neckargartach"
+  },
+  {
+    "city": "Herrenberg",
+    "short_name": "Herrenberg",
+    "lat": 48.5718936,
+    "lon": 8.882564,
+    "stadium": "Ammerstadion 6"
+  },
+  {
+    "city": "Karlsruhe",
+    "short_name": "Karlsruhe",
+    "lat": 49.0068705,
+    "lon": 8.4034195
+  },
+  {
+    "city": "Kornwestheim",
+    "short_name": "Kornwestheim",
+    "lat": 48.8521387,
+    "lon": 9.1811613,
+    "stadium": "Jägerstraße 90"
+  },
+  {
+    "city": "Leonberg",
+    "short_name": "Leonberg",
+    "lat": 48.7866622,
+    "lon": 9.0265895,
+    "stadium": "Lewa Sportpark"
+  },
+  {
+    "city": "Ludwigsburg",
+    "short_name": "Ludwigsburg",
+    "lat": 48.8924575,
+    "lon": 9.2112713,
+    "stadium": "Ludwig-Jahn Stadion"
+  },
+  {
+    "city": "Mannheim",
+    "short_name": "Mannheim",
+    "lat": 49.4877651,
+    "lon": 8.5090753,
+    "stadium": "Michael-Hoffmann-Stadion"
+  },
+  {
+    "city": "Pforzheim",
+    "short_name": "Pforzheim",
+    "lat": 48.890934,
+    "lon": 8.7025509
+  },
+  {
+    "city": "Philippsburg",
+    "short_name": "Philippsburg",
+    "lat": 49.2367495,
+    "lon": 8.4546679
+  },
+  {
+    "city": "Rettigheim",
+    "short_name": "Rettigheim",
+    "lat": 49.2408056,
+    "lon": 8.6975778
+  },
+  {
+    "city": "Reutlingen",
+    "short_name": "Reutlingen",
+    "lat": 48.4786885,
+    "lon": 9.1897825,
+    "stadium": "Stadion an der Kreuzeiche"
+  },
+  {
+    "city": "Schwäbisch Hall",
+    "short_name": "Schwäbisch Hall",
+    "lat": 49.1230288,
+    "lon": 9.736863,
+    "stadium": "Optima Sportpark"
+  },
+  {
+    "city": "Stuttgart",
+    "short_name": "Stuttgart",
+    "lat": 48.754109,
+    "lon": 9.1858589,
+    "stadium": "TuS1 Platz Waldau"
+  },
+  {
+    "city": "Walldürn",
+    "short_name": "Walldürn",
+    "lat": 49.5833,
+    "lon": 9.36667
+  },
+  {
+    "city": "Weinheim",
+    "short_name": "Weinheim",
+    "lat": 49.5409691,
+    "lon": 8.6457387,
+    "stadium": "Sepp-Herberger Stadion"
+  },
+  {
+    "city": "Wiesbaden",
+    "short_name": "Wiesbaden",
+    "lat": 50.0820384,
+    "lon": 8.2416556
+  }
+]

@@ -1,28 +1,27 @@
 package handler
 
 import (
-	"database/sql"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/axelrhd/referee-dashboard/model"
+	"github.com/axelrhd/referee-dashboard/store"
 	"github.com/axelrhd/referee-dashboard/validation"
 	"github.com/axelrhd/referee-dashboard/view"
 )
 
 type LeagueHandler struct {
-	q *model.Queries
+	s *store.Store
 }
 
-func NewLeagueHandler(q *model.Queries) *LeagueHandler {
-	return &LeagueHandler{q: q}
+func NewLeagueHandler(s *store.Store) *LeagueHandler {
+	return &LeagueHandler{s: s}
 }
 
 func (h *LeagueHandler) Routes(r chi.Router) {
@@ -44,7 +43,7 @@ func (h *LeagueHandler) APIRoutes(r chi.Router) {
 // HTML Handlers
 
 func (lh *LeagueHandler) List(w http.ResponseWriter, r *http.Request) {
-	leagues, err := lh.q.ListLeagues(r.Context())
+	leagues, err := lh.s.ListLeagues()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -62,20 +61,20 @@ func (lh *LeagueHandler) NewForm(w http.ResponseWriter, r *http.Request) {
 
 func (lh *LeagueHandler) Create(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
-	data, errors := validation.ValidateLeague(r.Form)
+	data, errs := validation.ValidateLeague(r.Form)
 
-	if len(errors) > 0 {
+	if len(errs) > 0 {
 		w.WriteHeader(http.StatusUnprocessableEntity)
-		page := view.LeagueForm(nil, errors, formValues(r))
+		page := view.LeagueForm(nil, errs, formValues(r))
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		page.Render(w)
 		return
 	}
 
-	_, err := lh.q.CreateLeague(r.Context(), model.CreateLeagueParams{
+	err := lh.s.PutLeague(&store.League{
 		Name:      data.Name,
 		ShortName: data.ShortName,
-		Sorter:    data.Sorter,
+		Sorter:    int(data.Sorter),
 		Remarks:   data.Remarks,
 	})
 	if err != nil {
@@ -104,21 +103,21 @@ func (lh *LeagueHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	r.ParseForm()
-	data, errors := validation.ValidateLeague(r.Form)
+	data, errs := validation.ValidateLeague(r.Form)
 
-	if len(errors) > 0 {
+	if len(errs) > 0 {
 		w.WriteHeader(http.StatusUnprocessableEntity)
-		page := view.LeagueForm(&league, errors, formValues(r))
+		page := view.LeagueForm(&league, errs, formValues(r))
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		page.Render(w)
 		return
 	}
 
-	err = lh.q.UpdateLeague(r.Context(), model.UpdateLeagueParams{
+	err = lh.s.PutLeague(&store.League{
 		ID:        league.ID,
 		Name:      data.Name,
 		ShortName: data.ShortName,
-		Sorter:    data.Sorter,
+		Sorter:    int(data.Sorter),
 		Remarks:   data.Remarks,
 	})
 	if err != nil {
@@ -131,13 +130,13 @@ func (lh *LeagueHandler) Update(w http.ResponseWriter, r *http.Request) {
 }
 
 func (lh *LeagueHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	id, err := parseID(r)
-	if err != nil {
+	id := chi.URLParam(r, "id")
+	if id == "" {
 		http.Error(w, "Ungültige ID", http.StatusBadRequest)
 		return
 	}
 
-	if err := lh.q.DeleteLeague(r.Context(), id); err != nil {
+	if err := lh.s.DeleteLeague(id); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -149,7 +148,7 @@ func (lh *LeagueHandler) Delete(w http.ResponseWriter, r *http.Request) {
 // JSON API
 
 func (lh *LeagueHandler) APIList(w http.ResponseWriter, r *http.Request) {
-	leagues, err := lh.q.ListLeagues(r.Context())
+	leagues, err := lh.s.ListLeagues()
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -168,7 +167,7 @@ func (lh *LeagueHandler) APIGet(w http.ResponseWriter, r *http.Request) {
 // Export
 
 func (lh *LeagueHandler) ExportCSV(w http.ResponseWriter, r *http.Request) {
-	leagues, err := lh.q.ListLeagues(r.Context())
+	leagues, err := lh.s.ListLeagues()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -190,7 +189,7 @@ func (lh *LeagueHandler) ExportCSV(w http.ResponseWriter, r *http.Request) {
 }
 
 func (lh *LeagueHandler) ExportSQL(w http.ResponseWriter, r *http.Request) {
-	leagues, err := lh.q.ListLeagues(r.Context())
+	leagues, err := lh.s.ListLeagues()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -207,26 +206,22 @@ func (lh *LeagueHandler) ExportSQL(w http.ResponseWriter, r *http.Request) {
 
 // Helpers
 
-func (lh *LeagueHandler) getLeague(w http.ResponseWriter, r *http.Request) (model.League, error) {
-	id, err := parseID(r)
-	if err != nil {
+func (lh *LeagueHandler) getLeague(w http.ResponseWriter, r *http.Request) (store.League, error) {
+	id := chi.URLParam(r, "id")
+	if id == "" {
 		http.Error(w, "Ungültige ID", http.StatusBadRequest)
-		return model.League{}, err
+		return store.League{}, fmt.Errorf("empty id")
 	}
-	league, err := lh.q.GetLeague(r.Context(), id)
-	if err == sql.ErrNoRows {
+	league, err := lh.s.GetLeague(id)
+	if errors.Is(err, store.ErrNotFound) {
 		http.Error(w, "Liga nicht gefunden", http.StatusNotFound)
-		return model.League{}, err
+		return store.League{}, err
 	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return model.League{}, err
+		return store.League{}, err
 	}
 	return league, nil
-}
-
-func parseID(r *http.Request) (int64, error) {
-	return strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 }
 
 func formValues(r *http.Request) map[string]string {

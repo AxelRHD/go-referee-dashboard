@@ -3,7 +3,6 @@ package validation
 import (
 	"net/url"
 	"regexp"
-	"strconv"
 	"strings"
 )
 
@@ -12,15 +11,15 @@ var dateRegex = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
 type GameData struct {
 	GameDate    string
 	GameTime    string
-	HomeTeamID  int64
-	AwayTeamID  int64
-	VenueID     int64
-	LeagueID    int64
+	HomeTeamID  string
+	AwayTeamID  string
+	VenueID     string
+	LeagueID    string
 	Position    string
 	RefereeFee  float64
 	TravelCosts float64
 	KmDriven    int64
-	Exhibition  int64
+	Exhibition  bool
 	Remarks     string
 }
 
@@ -35,19 +34,19 @@ func ValidateGame(form url.Values) (GameData, map[string]string) {
 
 	gameTime := optionalField(form, "game_time")
 
-	// home_team_id: required integer
-	homeTeamID := parseRequiredID(form, "home_team_id", "Heimteam", errors)
+	// home_team_id: required string
+	homeTeamID := requireField(form, "home_team_id", "Heimteam", errors)
 
-	// away_team_id: required integer
-	awayTeamID := parseRequiredID(form, "away_team_id", "Gastteam", errors)
+	// away_team_id: required string
+	awayTeamID := requireField(form, "away_team_id", "Gastteam", errors)
 
 	// Cross-field: teams must differ
-	if homeTeamID != 0 && awayTeamID != 0 && homeTeamID == awayTeamID {
+	if homeTeamID != "" && awayTeamID != "" && homeTeamID == awayTeamID {
 		errors["away_team_id"] = "Heim- und Gastteam dürfen nicht identisch sein."
 	}
 
-	// league_id: required integer
-	leagueID := parseRequiredID(form, "league_id", "Liga", errors)
+	// league_id: required string
+	leagueID := requireField(form, "league_id", "Liga", errors)
 
 	// position: required
 	position := requireField(form, "position", "Position", errors)
@@ -58,18 +57,10 @@ func ValidateGame(form url.Values) (GameData, map[string]string) {
 	kmDriven := parseIntField(form, "km_driven", "Kilometer", errors, 0)
 
 	// venue_id: optional
-	var venueID int64
-	if raw := strings.TrimSpace(form.Get("venue_id")); raw != "" {
-		if v, err := strconv.ParseInt(raw, 10, 64); err == nil {
-			venueID = v
-		}
-	}
+	venueID := strings.TrimSpace(form.Get("venue_id"))
 
 	// exhibition: checkbox
-	var exhibition int64
-	if form.Get("exhibition") != "" {
-		exhibition = 1
-	}
+	exhibition := form.Get("exhibition") != ""
 
 	remarks := optionalField(form, "remarks")
 
@@ -89,18 +80,4 @@ func ValidateGame(form url.Values) (GameData, map[string]string) {
 	}
 
 	return data, errors
-}
-
-func parseRequiredID(form url.Values, field, label string, errors map[string]string) int64 {
-	raw := strings.TrimSpace(form.Get(field))
-	if raw == "" {
-		errors[field] = label + " ist ein Pflichtfeld."
-		return 0
-	}
-	v, err := strconv.ParseInt(raw, 10, 64)
-	if err != nil {
-		errors[field] = label + " ist ungültig."
-		return 0
-	}
-	return v
 }

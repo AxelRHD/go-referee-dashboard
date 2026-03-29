@@ -1,26 +1,26 @@
 package handler
 
 import (
-	"database/sql"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/axelrhd/referee-dashboard/model"
+	"github.com/axelrhd/referee-dashboard/store"
 	"github.com/axelrhd/referee-dashboard/validation"
 	"github.com/axelrhd/referee-dashboard/view"
 )
 
 type VenueHandler struct {
-	q *model.Queries
+	s *store.Store
 }
 
-func NewVenueHandler(q *model.Queries) *VenueHandler {
-	return &VenueHandler{q: q}
+func NewVenueHandler(s *store.Store) *VenueHandler {
+	return &VenueHandler{s: s}
 }
 
 func (h *VenueHandler) Routes(r chi.Router) {
@@ -43,7 +43,7 @@ func (h *VenueHandler) APIRoutes(r chi.Router) {
 // HTML Handlers
 
 func (vh *VenueHandler) List(w http.ResponseWriter, r *http.Request) {
-	venues, err := vh.q.ListVenues(r.Context())
+	venues, err := vh.s.ListVenues()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -61,17 +61,17 @@ func (vh *VenueHandler) NewForm(w http.ResponseWriter, r *http.Request) {
 
 func (vh *VenueHandler) Create(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
-	data, errors := validation.ValidateVenue(r.Form)
+	data, errs := validation.ValidateVenue(r.Form)
 
-	if len(errors) > 0 {
+	if len(errs) > 0 {
 		w.WriteHeader(http.StatusUnprocessableEntity)
-		page := view.VenueForm(nil, errors, formValues(r))
+		page := view.VenueForm(nil, errs, formValues(r))
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		page.Render(w)
 		return
 	}
 
-	_, err := vh.q.CreateVenue(r.Context(), model.CreateVenueParams{
+	err := vh.s.PutVenue(&store.Venue{
 		City:      data.City,
 		Stadium:   data.Stadium,
 		ShortName: data.ShortName,
@@ -104,17 +104,17 @@ func (vh *VenueHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	r.ParseForm()
-	data, errors := validation.ValidateVenue(r.Form)
+	data, errs := validation.ValidateVenue(r.Form)
 
-	if len(errors) > 0 {
+	if len(errs) > 0 {
 		w.WriteHeader(http.StatusUnprocessableEntity)
-		page := view.VenueForm(&venue, errors, formValues(r))
+		page := view.VenueForm(&venue, errs, formValues(r))
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		page.Render(w)
 		return
 	}
 
-	err = vh.q.UpdateVenue(r.Context(), model.UpdateVenueParams{
+	err = vh.s.PutVenue(&store.Venue{
 		ID:        venue.ID,
 		City:      data.City,
 		Stadium:   data.Stadium,
@@ -132,13 +132,13 @@ func (vh *VenueHandler) Update(w http.ResponseWriter, r *http.Request) {
 }
 
 func (vh *VenueHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	id, err := parseID(r)
-	if err != nil {
+	id := chi.URLParam(r, "id")
+	if id == "" {
 		http.Error(w, "Ungültige ID", http.StatusBadRequest)
 		return
 	}
 
-	if err := vh.q.DeleteVenue(r.Context(), id); err != nil {
+	if err := vh.s.DeleteVenue(id); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -190,7 +190,7 @@ func (vh *VenueHandler) Geocode(w http.ResponseWriter, r *http.Request) {
 // JSON API
 
 func (vh *VenueHandler) APIList(w http.ResponseWriter, r *http.Request) {
-	venues, err := vh.q.ListVenues(r.Context())
+	venues, err := vh.s.ListVenues()
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -209,7 +209,7 @@ func (vh *VenueHandler) APIGet(w http.ResponseWriter, r *http.Request) {
 // Export
 
 func (vh *VenueHandler) ExportCSV(w http.ResponseWriter, r *http.Request) {
-	venues, err := vh.q.ListVenues(r.Context())
+	venues, err := vh.s.ListVenues()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -238,7 +238,7 @@ func (vh *VenueHandler) ExportCSV(w http.ResponseWriter, r *http.Request) {
 }
 
 func (vh *VenueHandler) ExportSQL(w http.ResponseWriter, r *http.Request) {
-	venues, err := vh.q.ListVenues(r.Context())
+	venues, err := vh.s.ListVenues()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -286,20 +286,20 @@ func photonGeocode(client *http.Client, query string) (float64, float64, error) 
 	return coords[1], coords[0], nil // Photon: [lon, lat]
 }
 
-func (vh *VenueHandler) getVenue(w http.ResponseWriter, r *http.Request) (model.Venue, error) {
-	id, err := parseID(r)
-	if err != nil {
+func (vh *VenueHandler) getVenue(w http.ResponseWriter, r *http.Request) (store.Venue, error) {
+	id := chi.URLParam(r, "id")
+	if id == "" {
 		http.Error(w, "Ungültige ID", http.StatusBadRequest)
-		return model.Venue{}, err
+		return store.Venue{}, fmt.Errorf("empty id")
 	}
-	venue, err := vh.q.GetVenue(r.Context(), id)
-	if err == sql.ErrNoRows {
+	venue, err := vh.s.GetVenue(id)
+	if errors.Is(err, store.ErrNotFound) {
 		http.Error(w, "Spielort nicht gefunden", http.StatusNotFound)
-		return model.Venue{}, err
+		return store.Venue{}, err
 	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return model.Venue{}, err
+		return store.Venue{}, err
 	}
 	return venue, nil
 }

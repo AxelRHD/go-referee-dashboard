@@ -1,24 +1,24 @@
 package handler
 
 import (
-	"database/sql"
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/axelrhd/referee-dashboard/model"
+	"github.com/axelrhd/referee-dashboard/store"
 	"github.com/axelrhd/referee-dashboard/validation"
 	"github.com/axelrhd/referee-dashboard/view"
 )
 
 type TeamHandler struct {
-	q *model.Queries
+	s *store.Store
 }
 
-func NewTeamHandler(q *model.Queries) *TeamHandler {
-	return &TeamHandler{q: q}
+func NewTeamHandler(s *store.Store) *TeamHandler {
+	return &TeamHandler{s: s}
 }
 
 func (h *TeamHandler) Routes(r chi.Router) {
@@ -40,7 +40,7 @@ func (h *TeamHandler) APIRoutes(r chi.Router) {
 // HTML Handlers
 
 func (th *TeamHandler) List(w http.ResponseWriter, r *http.Request) {
-	teams, err := th.q.ListTeams(r.Context())
+	teams, err := th.s.ListTeams()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -58,17 +58,17 @@ func (th *TeamHandler) NewForm(w http.ResponseWriter, r *http.Request) {
 
 func (th *TeamHandler) Create(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
-	data, errors := validation.ValidateTeam(r.Form)
+	data, errs := validation.ValidateTeam(r.Form)
 
-	if len(errors) > 0 {
+	if len(errs) > 0 {
 		w.WriteHeader(http.StatusUnprocessableEntity)
-		page := view.TeamForm(nil, errors, formValues(r))
+		page := view.TeamForm(nil, errs, formValues(r))
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		page.Render(w)
 		return
 	}
 
-	_, err := th.q.CreateTeam(r.Context(), model.CreateTeamParams{
+	err := th.s.PutTeam(&store.Team{
 		Name:     data.Name,
 		State:    data.State,
 		IsActive: data.IsActive,
@@ -100,17 +100,17 @@ func (th *TeamHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	r.ParseForm()
-	data, errors := validation.ValidateTeam(r.Form)
+	data, errs := validation.ValidateTeam(r.Form)
 
-	if len(errors) > 0 {
+	if len(errs) > 0 {
 		w.WriteHeader(http.StatusUnprocessableEntity)
-		page := view.TeamForm(&team, errors, formValues(r))
+		page := view.TeamForm(&team, errs, formValues(r))
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		page.Render(w)
 		return
 	}
 
-	err = th.q.UpdateTeam(r.Context(), model.UpdateTeamParams{
+	err = th.s.PutTeam(&store.Team{
 		ID:       team.ID,
 		Name:     data.Name,
 		State:    data.State,
@@ -127,13 +127,13 @@ func (th *TeamHandler) Update(w http.ResponseWriter, r *http.Request) {
 }
 
 func (th *TeamHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	id, err := parseID(r)
-	if err != nil {
+	id := chi.URLParam(r, "id")
+	if id == "" {
 		http.Error(w, "Ungültige ID", http.StatusBadRequest)
 		return
 	}
 
-	if err := th.q.DeleteTeam(r.Context(), id); err != nil {
+	if err := th.s.DeleteTeam(id); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -145,7 +145,7 @@ func (th *TeamHandler) Delete(w http.ResponseWriter, r *http.Request) {
 // JSON API
 
 func (th *TeamHandler) APIList(w http.ResponseWriter, r *http.Request) {
-	teams, err := th.q.ListTeams(r.Context())
+	teams, err := th.s.ListTeams()
 	if err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -164,7 +164,7 @@ func (th *TeamHandler) APIGet(w http.ResponseWriter, r *http.Request) {
 // Export
 
 func (th *TeamHandler) ExportCSV(w http.ResponseWriter, r *http.Request) {
-	teams, err := th.q.ListTeams(r.Context())
+	teams, err := th.s.ListTeams()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -180,7 +180,7 @@ func (th *TeamHandler) ExportCSV(w http.ResponseWriter, r *http.Request) {
 
 	for _, t := range teams {
 		active := "Nein"
-		if t.IsActive == 1 {
+		if t.IsActive {
 			active = "Ja"
 		}
 		cw.Write([]string{t.Name, t.State, active, t.Remarks})
@@ -189,7 +189,7 @@ func (th *TeamHandler) ExportCSV(w http.ResponseWriter, r *http.Request) {
 }
 
 func (th *TeamHandler) ExportSQL(w http.ResponseWriter, r *http.Request) {
-	teams, err := th.q.ListTeams(r.Context())
+	teams, err := th.s.ListTeams()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -199,27 +199,31 @@ func (th *TeamHandler) ExportSQL(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", exportFilename("teams", "sql"))
 
 	for _, t := range teams {
+		isActive := 0
+		if t.IsActive {
+			isActive = 1
+		}
 		fmt.Fprintf(w, "INSERT INTO teams (name, state, is_active, remarks) VALUES (%s, %s, %d, %s);\n",
-			sqlEscape(t.Name), sqlEscape(t.State), t.IsActive, sqlEscape(t.Remarks))
+			sqlEscape(t.Name), sqlEscape(t.State), isActive, sqlEscape(t.Remarks))
 	}
 }
 
 // Helpers
 
-func (th *TeamHandler) getTeam(w http.ResponseWriter, r *http.Request) (model.Team, error) {
-	id, err := parseID(r)
-	if err != nil {
+func (th *TeamHandler) getTeam(w http.ResponseWriter, r *http.Request) (store.Team, error) {
+	id := chi.URLParam(r, "id")
+	if id == "" {
 		http.Error(w, "Ungültige ID", http.StatusBadRequest)
-		return model.Team{}, err
+		return store.Team{}, fmt.Errorf("empty id")
 	}
-	team, err := th.q.GetTeam(r.Context(), id)
-	if err == sql.ErrNoRows {
+	team, err := th.s.GetTeam(id)
+	if errors.Is(err, store.ErrNotFound) {
 		http.Error(w, "Team nicht gefunden", http.StatusNotFound)
-		return model.Team{}, err
+		return store.Team{}, err
 	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return model.Team{}, err
+		return store.Team{}, err
 	}
 	return team, nil
 }

@@ -26,7 +26,7 @@ var Bundeslaender = []string{
 type TeamData struct {
 	Name     string
 	State    string
-	IsActive int64
+	IsActive bool
 	Remarks  string
 }
 
@@ -35,12 +35,7 @@ func ValidateTeam(form url.Values) (TeamData, map[string]string) {
 
 	name := requireField(form, "name", "Name", errors)
 	state := optionalField(form, "state")
-
-	var isActive int64
-	if form.Get("is_active") != "" {
-		isActive = 1
-	}
-
+	isActive := form.Get("is_active") != ""
 	remarks := optionalField(form, "remarks")
 
 	data := TeamData{

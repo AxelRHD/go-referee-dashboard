@@ -44,46 +44,6 @@ build:
     @CGO_ENABLED=0 go build -ldflags "-X main.version={{version}} -s -w" -o {{bin_file}} ./cmd
 
 # ============================================================
-# Database
-# ============================================================
-
-# Run database migrations
-[group('db')]
-migrate:
-    @go run ./cmd migrate
-
-# Generate sqlc code
-[group('db')]
-generate:
-    @sqlc generate
-
-# ============================================================
-# Seeding
-# ============================================================
-
-seed_dir := "db/seed"
-db_file := env("DB_PATH", "referee.db")
-
-# Export current positions, leagues, teams, venues as seed SQL (without IDs/timestamps)
-[group('seeding')]
-dump-seed:
-    @sqlite3 {{db_file}} ".mode insert positions" ".output {{seed_dir}}/positions.sql" "SELECT position, long, sorter FROM positions ORDER BY sorter;"
-    @sqlite3 {{db_file}} ".mode insert leagues" ".output {{seed_dir}}/leagues.sql" "SELECT name, short_name, sorter, remarks FROM leagues ORDER BY sorter, name;"
-    @sqlite3 {{db_file}} ".mode insert teams" ".output {{seed_dir}}/teams.sql" "SELECT name, state, is_active, remarks FROM teams ORDER BY name;"
-    @sqlite3 {{db_file}} ".mode insert venues" ".output {{seed_dir}}/venues.sql" "SELECT city, short_name, stadium, lat, lon FROM venues WHERE id > 0 ORDER BY short_name, city;"
-    @echo "Seed data exported to {{seed_dir}}/"
-
-# Import seed data (positions, leagues, teams, venues)
-[group('seeding')]
-[confirm("This will import seed data into the database. Continue?")]
-seed-data:
-    @sqlite3 {{db_file}} < {{seed_dir}}/positions.sql
-    @sqlite3 {{db_file}} < {{seed_dir}}/leagues.sql
-    @sqlite3 {{db_file}} < {{seed_dir}}/teams.sql
-    @sqlite3 {{db_file}} < {{seed_dir}}/venues.sql
-    @echo "Seed data imported."
-
-# ============================================================
 # Deployment
 # ============================================================
 

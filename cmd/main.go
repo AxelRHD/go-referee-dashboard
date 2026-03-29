@@ -5,8 +5,6 @@ import (
 	"log"
 	"os"
 
-	_ "modernc.org/sqlite"
-
 	appcli "github.com/axelrhd/referee-dashboard/cli"
 	"github.com/axelrhd/referee-dashboard/config"
 	"github.com/axelrhd/referee-dashboard/server"

@@ -16,12 +16,12 @@
 - **Team & League Management** — Maintain teams (with Bundesland) and leagues with sorting
 - **Venue Management** — Manage venues with short names and Photon geocoding (komoot)
 - **Dashboard** — Interactive ECharts visualizations with year and multi-year overview, calendar heatmap, geo map, ThemeRiver, bump charts
-- **Import / Export** — CSV and SQL export per entity, SQLite dump, file upload and direct paste import
-- **Setup Wizard** — First-start setup page with seed data import, backup restore, or empty database
+- **Import / Export** — Full database JSON export/import, CSV export per entity
+- **Setup Wizard** — First-start setup page with seed data import, JSON restore, or empty database
+- **Position Management** — Inline CRUD for referee positions on the data management page
 - **Form Validation** — Server-side validation with inline error messages (German)
 - **Dark / Light Mode** — Nord theme with persistent toggle (localStorage)
 - **Healthcheck** — `/health` endpoint + CLI health command for Docker monitoring
-- **Auto-Migration** — Database schema applied automatically on startup
 
 ## Screenshots
 
@@ -48,8 +48,8 @@
 | Frontend | gomponents (HTML generation), Bootstrap 5.3, Bootstrap Icons |
 | Charts | Apache ECharts 5 (geo map, bar, line, pie, heatmap, treemap, ThemeRiver) |
 | Interactivity | htmx, Alpine.js |
-| Database | SQLite via modernc.org/sqlite (pure Go, no CGO) |
-| Schema | goose (migrations, embedded) + sqlc (type-safe queries) |
+| Database | bbolt (embedded key-value store, JSON documents) |
+| IDs | ULIDs (time-sortable, via oklog/ulid) |
 | Config | envconfig + godotenv |
 | CLI | urfave/cli v3 |
 | Deployment | Docker (FROM scratch), gosctl, just |
@@ -61,7 +61,6 @@
 
 - [Go 1.26+](https://go.dev/)
 - [just](https://just.systems/) — command runner
-- [sqlc](https://sqlc.dev/) — SQL code generator (development only)
 - [air](https://github.com/air-verse/air) — hot-reload dev server (optional)
 
 ## Getting Started
@@ -85,8 +84,8 @@ The app will be available at [http://localhost:3000](http://localhost:3000).
 On first start with an empty database, the app redirects to `/setup` where you can choose:
 
 1. **Neues Setup** — Import seed data (positions, leagues, teams, venues) via checkboxes. Ideal for a fresh start.
-2. **Wiederherstellung** — Restore from a complete SQL dump (file upload or paste). Use this to restore a backup from your own database.
-3. **Leere Datenbank** — Skip seeding, start with empty tables. Data can be added manually or imported later via `/data`.
+2. **Wiederherstellung** — Restore from a JSON export (file upload or paste). Use this to restore a backup.
+3. **Leere Datenbank** — Skip seeding, start empty. Data can be added manually or imported later via `/data`.
 
 After setup, the app redirects to the dashboard.
 
@@ -96,10 +95,8 @@ Configuration via `.env` file in the project root:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `DB_PATH` | `referee.db` | Path to SQLite database file |
+| `DB_PATH` | `referee.db` | Path to bbolt database file |
 | `PORT` | `3000` | Server port |
-| `DEBUG` | `false` | Enable debug mode |
-| `SECRET_KEY` | `change-me-in-production` | Session secret key |
 
 ## Just Recipes
 
@@ -122,20 +119,6 @@ just --list
 |--------|-------------|
 | `just build` | Build static binary with git version |
 
-### Database
-
-| Recipe | Description |
-|--------|-------------|
-| `just migrate` | Run goose migrations |
-| `just generate` | Generate sqlc code from queries |
-
-### Seeding
-
-| Recipe | Description |
-|--------|-------------|
-| `just dump-seed` | Export current positions, leagues, teams, venues to `db/seed/` |
-| `just seed-data` | Import seed data from `db/seed/` into the database (with confirmation) |
-
 ### Deployment
 
 | Recipe | Description |
@@ -153,21 +136,22 @@ The app is designed for self-hosting, e.g. on an OpenMediaVault (OMV) server wit
 ### Architecture
 
 ```
-Local (WSL)                          Server (e.g. OMV)
+Local (VM)                           Server (e.g. OMV)
 ┌──────────────┐                     ┌──────────────────────────┐
 │ just build   │                     │                          │
 │ just deploy  │──docker save/load──▶│ Docker image (scratch)   │
 │              │                     │   Binary + static assets │
 │              │                     │                          │
 │              │                     │ appdata/                 │
-│              │                     │   └── referee.db         │
+│              │                     │   └── referee.db (bbolt) │
 └──────────────┘                     └──────────────────────────┘
 ```
 
 - **Docker image** is a single static binary + static assets (~15 MB)
-- **Database** persists in the appdata volume
-- **Migrations** run automatically on startup (embedded in binary)
-- **Seed data** embedded in binary, available via setup wizard
+- **Database** persists in the appdata volume as a single bbolt file
+- **No migrations** — schema changes are handled by updating Go structs
+- **Seed data** embedded in binary as JSON, available via setup wizard
+- **Backup** — copy the `.db` file, or use JSON export on `/data`
 - **Container lifecycle** managed via OMV Docker UI
 
 ### Docker Compose
@@ -188,10 +172,8 @@ services:
       timeout: 5s
       retries: 3
     environment:
-      - DB_PATH=${DB_PATH}
-      - PORT=${PORT}
-      - DEBUG=${DEBUG}
-      - SECRET_KEY=${SECRET_KEY}
+      - DB_PATH=/data/referee.db
+      - PORT=3000
 ```
 
 ### Version Tagging
@@ -199,49 +181,55 @@ services:
 The app displays its version in the navbar, derived from git tags:
 
 ```bash
-git tag v0.3.0
+git tag v0.4.0
 just deploy
 ```
 
-- Tagged commit → `v0.3.0`
-- After commits → `v0.3.0-1-gabcdef`
+- Tagged commit → `v0.4.0`
+- After commits → `v0.4.0-1-gabcdef`
 
 ## Data Management
 
 ### Export
 
-Each list page (Games, Teams, Leagues, Venues) offers CSV and SQL export buttons with timestamps in the filename. The data management page (`/data`) provides:
-
-- **SQLite Dump** — Complete backup with schema and data (timestamped)
-- **All Data Export** — INSERT statements for all tables in FK order (timestamped)
+The data management page (`/data`) provides a **JSON export** of the entire database. Each entity list page (Games, Teams, Leagues, Venues) also offers CSV and SQL export buttons.
 
 ### Import
 
-- **SQL** — Paste or upload INSERT/CREATE TABLE statements (DROP, DELETE, UPDATE are blocked for safety)
+- **JSON** — Restore a previously exported JSON file (replaces all data)
 - **CSV** — Upload or paste CSV data with German headers, auto-resolves team/league names to IDs
 
 CSV format uses semicolons (`;`) as delimiters and UTF-8 with BOM for Excel compatibility.
+
+### Positions
+
+Referee positions are managed inline on the data management page (`/data`). They are rarely changed and don't need a dedicated page.
 
 ## Project Structure
 
 ```
 cmd/main.go              # Entry point (config + CLI)
-cli/cli.go               # urfave/cli v3 (serve, migrate, health)
+cli/cli.go               # urfave/cli v3 (serve, health)
 server/server.go         # chi router, middleware, route registration
 config/config.go         # envconfig + godotenv
+store/                   # bbolt-based data access layer
+├── store.go             # DB open/close, bucket init, backup
+├── types.go             # Domain structs + embedded ref types
+├── leagues.go           # LeagueStore: List, Get, Put, Delete
+├── teams.go             # TeamStore: List, Get, Put, Delete
+├── venues.go            # VenueStore: List, Get, Put, Delete, UpdateCoords
+├── games.go             # GameStore: List, Get, Put, Delete, ListBySeason, ListSeasons
+├── positions.go         # PositionStore: List, Put, Delete
+├── export.go            # JSON export/import (entire DB)
+├── seed.go              # Batch seeding in single transaction
+└── seed/                # Embedded JSON seed files
+    ├── positions.json
+    ├── leagues.json
+    ├── teams.json
+    └── venues.json
 handler/                 # HTTP handlers per module
 view/                    # gomponents views per module
-model/                   # sqlc-generated code (do not edit!)
 validation/              # Form validation
-db/
-├── embed.go             # Embedded migrations (go:embed)
-├── migrations/          # Goose SQL migration files
-├── queries/             # sqlc SQL query files
-└── seed/                # Seed SQL files (embedded via go:embed)
-    ├── positions.sql
-    ├── leagues.sql
-    ├── teams.sql
-    └── venues.sql
 static/
 ├── css/nord.css         # Nord theme overrides
 ├── js/dashboard.js      # Alpine.js dashboard component

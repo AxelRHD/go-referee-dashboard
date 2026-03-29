@@ -113,3 +113,51 @@ func (s *Store) DeleteGame(id string) error {
 		return tx.Bucket(bucketGames).Delete([]byte(id))
 	})
 }
+
+// IsReferenced prüft ob eine Stammdaten-ID in irgendeinem Game referenziert wird.
+func (s *Store) IsReferenced(check func(g *Game) bool) bool {
+	found := false
+	s.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(bucketGames)
+		return b.ForEach(func(k, v []byte) error {
+			if found {
+				return nil
+			}
+			var g Game
+			if err := json.Unmarshal(v, &g); err != nil {
+				return err
+			}
+			if check(&g) {
+				found = true
+			}
+			return nil
+		})
+	})
+	return found
+}
+
+// UpdateGameRefs aktualisiert eingebettete Referenzen in allen Games.
+// Die update-Funktion erhält jedes Game und gibt true zurück wenn es geändert wurde.
+func (s *Store) UpdateGameRefs(update func(g *Game) bool) (int, error) {
+	count := 0
+	return count, s.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(bucketGames)
+		return b.ForEach(func(k, v []byte) error {
+			var g Game
+			if err := json.Unmarshal(v, &g); err != nil {
+				return err
+			}
+			if update(&g) {
+				data, err := json.Marshal(&g)
+				if err != nil {
+					return err
+				}
+				if err := b.Put(k, data); err != nil {
+					return err
+				}
+				count++
+			}
+			return nil
+		})
+	})
+}

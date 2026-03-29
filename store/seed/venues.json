@@ -54,10 +54,17 @@
   },
   {
     "city": "Heidelberg",
-    "short_name": "Heidelberg",
-    "lat": 49.3906002,
-    "lon": 8.6682209,
+    "short_name": "Heidelberg (FGS)",
+    "lat": 49.3906,
+    "lon": 8.668221,
     "stadium": "Fritz-Grunebaum Sportpark"
+  },
+  {
+    "city": "Heidelberg",
+    "short_name": "Heidelberg (Training)",
+    "lat": 49.39367074263542,
+    "lon": 8.682585793850961,
+    "stadium": "Carl-Bosch-Straße 10"
   },
   {
     "city": "Heilbronn",
@@ -75,9 +82,17 @@
   },
   {
     "city": "Karlsruhe",
-    "short_name": "Karlsruhe",
-    "lat": 49.0068705,
-    "lon": 8.4034195
+    "short_name": "Karlsruhe (Greifs)",
+    "lat": 48.9946906,
+    "lon": 8.3804386,
+    "stadium": "Carl-Kaufmann Stadion"
+  },
+  {
+    "city": "Karlsruhe",
+    "short_name": "Karlsruhe (KIT)",
+    "lat": 49.01679476192584,
+    "lon": 8.414575555028662,
+    "stadium": "Hochschulsport KIT Kunstrasen"
   },
   {
     "city": "Kornwestheim",

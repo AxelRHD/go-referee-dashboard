@@ -109,17 +109,31 @@ func (th *TeamHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = th.s.PutTeam(&store.Team{
+	updated := &store.Team{
 		ID:       team.ID,
 		Name:     data.Name,
 		State:    data.State,
 		IsActive: data.IsActive,
 		Remarks:  data.Remarks,
-	})
-	if err != nil {
+	}
+	if err = th.s.PutTeam(updated); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	// Update eingebettete Refs in allen Games
+	th.s.UpdateGameRefs(func(g *store.Game) bool {
+		changed := false
+		if g.HomeTeam.ID == team.ID {
+			g.HomeTeam = store.TeamRef{ID: updated.ID, Name: updated.Name}
+			changed = true
+		}
+		if g.AwayTeam.ID == team.ID {
+			g.AwayTeam = store.TeamRef{ID: updated.ID, Name: updated.Name}
+			changed = true
+		}
+		return changed
+	})
 
 	view.SetFlash(w, "Team wurde aktualisiert.")
 	http.Redirect(w, r, "/teams", http.StatusSeeOther)
@@ -129,6 +143,12 @@ func (th *TeamHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
 		http.Error(w, "Ungültige ID", http.StatusBadRequest)
+		return
+	}
+
+	if th.s.IsReferenced(func(g *store.Game) bool { return g.HomeTeam.ID == id || g.AwayTeam.ID == id }) {
+		view.SetFlash(w, "Team kann nicht gelöscht werden — wird noch in Spielen verwendet.")
+		http.Redirect(w, r, "/teams", http.StatusSeeOther)
 		return
 	}
 

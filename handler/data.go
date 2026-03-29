@@ -113,6 +113,13 @@ func (dh *DataHandler) UpdatePosition(w http.ResponseWriter, r *http.Request) {
 
 func (dh *DataHandler) DeletePosition(w http.ResponseWriter, r *http.Request) {
 	key := chi.URLParam(r, "key")
+
+	if dh.s.IsReferenced(func(g *store.Game) bool { return g.Position == key }) {
+		view.SetFlash(w, fmt.Sprintf("Position %s kann nicht gelöscht werden — wird noch in Spielen verwendet.", key))
+		http.Redirect(w, r, "/data", http.StatusSeeOther)
+		return
+	}
+
 	if err := dh.s.DeletePosition(key); err != nil {
 		view.SetFlash(w, fmt.Sprintf("Fehler: %v", err))
 	} else {

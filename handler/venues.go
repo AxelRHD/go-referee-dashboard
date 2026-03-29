@@ -113,18 +113,30 @@ func (vh *VenueHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = vh.s.PutVenue(&store.Venue{
+	updated := &store.Venue{
 		ID:        venue.ID,
 		City:      data.City,
 		Stadium:   data.Stadium,
 		ShortName: data.ShortName,
 		Lat:       data.Lat,
 		Lon:       data.Lon,
-	})
-	if err != nil {
+	}
+	if err = vh.s.PutVenue(updated); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	// Update eingebettete Refs in allen Games
+	vh.s.UpdateGameRefs(func(g *store.Game) bool {
+		if g.Venue.ID != venue.ID {
+			return false
+		}
+		g.Venue = store.VenueRef{
+			ID: updated.ID, City: updated.City,
+			ShortName: updated.ShortName, Lat: updated.Lat, Lon: updated.Lon,
+		}
+		return true
+	})
 
 	view.SetFlash(w, "Spielort wurde aktualisiert.")
 	http.Redirect(w, r, "/venues", http.StatusSeeOther)
@@ -134,6 +146,12 @@ func (vh *VenueHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
 		http.Error(w, "Ungültige ID", http.StatusBadRequest)
+		return
+	}
+
+	if vh.s.IsReferenced(func(g *store.Game) bool { return g.Venue.ID == id }) {
+		view.SetFlash(w, "Spielort kann nicht gelöscht werden — wird noch in Spielen verwendet.")
+		http.Redirect(w, r, "/venues", http.StatusSeeOther)
 		return
 	}
 

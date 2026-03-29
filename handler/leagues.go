@@ -111,17 +111,28 @@ func (lh *LeagueHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = lh.s.PutLeague(&store.League{
+	updated := &store.League{
 		ID:        league.ID,
 		Name:      data.Name,
 		ShortName: data.ShortName,
 		Sorter:    int(data.Sorter),
 		Remarks:   data.Remarks,
-	})
-	if err != nil {
+	}
+	if err = lh.s.PutLeague(updated); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	// Update eingebettete Refs in allen Games
+	lh.s.UpdateGameRefs(func(g *store.Game) bool {
+		if g.League.ID != league.ID {
+			return false
+		}
+		g.League = store.LeagueRef{
+			ID: updated.ID, Name: updated.Name, ShortName: updated.ShortName,
+		}
+		return true
+	})
 
 	view.SetFlash(w, "Liga wurde aktualisiert.")
 	http.Redirect(w, r, "/leagues", http.StatusSeeOther)
@@ -131,6 +142,12 @@ func (lh *LeagueHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
 		http.Error(w, "Ungültige ID", http.StatusBadRequest)
+		return
+	}
+
+	if lh.s.IsReferenced(func(g *store.Game) bool { return g.League.ID == id }) {
+		view.SetFlash(w, "Liga kann nicht gelöscht werden — wird noch in Spielen verwendet.")
+		http.Redirect(w, r, "/leagues", http.StatusSeeOther)
 		return
 	}
 

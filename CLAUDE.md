@@ -106,3 +106,13 @@ die NICHT in diesem Repo gebaut wird. Sie wird von der zentralen Übersichts-Sit
   in `docs/modules/ROOT/images/` — dieselben Bilder referenziert auch das README.
 - Änderungen an der Projektdoku laufen üblicherweise über die Session im
   hobby-projects-Repo (dort liegen die Antora-Konventionen). Hier nichts „bauen".
+
+## Offene Aufgaben
+
+- **Delete ohne Sicherheitsabfrage absichern:** Delete-Buttons löschen aktuell sofort,
+  ohne Bestätigung — gefährlich (Fehlklick = unwiderruflicher Datenverlust). Alle
+  Delete-Aktionen einheitlich mit Confirm-Dialog versehen (z.B. HTMX `hx-confirm`
+  oder Alpine-Modal). Betroffen: alle `POST /{…}/delete`-Endpunkte in
+  `handler/games.go`, `leagues.go`, `venues.go`, `teams.go`, `data.go` (Positionen).
+  Hinweis: v0.4.4 „delete protection" (Referenz-/Cascade-Schutz) ist eine **andere**
+  Sache als die fehlende UI-Bestätigung.

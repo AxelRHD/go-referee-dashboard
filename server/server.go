@@ -10,6 +10,7 @@ import (
 
 	"github.com/axelrhd/referee-dashboard/config"
 	"github.com/axelrhd/referee-dashboard/handler"
+	"github.com/axelrhd/referee-dashboard/static"
 	"github.com/axelrhd/referee-dashboard/store"
 )
 
@@ -49,7 +50,7 @@ func NewServer(cfg config.Config) (http.Handler, *store.Store) {
 
 	setup.Routes(r)
 
-	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServerFS(static.Files)))
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("ok"))

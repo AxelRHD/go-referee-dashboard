@@ -1,0 +1,72 @@
+= Datenmodell
+:navtitle: Datenmodell
+:description: Buckets, ULIDs, eingebettete Referenzen und Export/Import.
+
+Die Daten liegen in einer einzelnen https://github.com/etcd-io/bbolt[bbolt]-Datei –
+einem eingebetteten Key-Value-Store. Jede Entität hat ihren eigenen *Bucket*, die
+Werte sind JSON-Dokumente.
+
+== Buckets
+
+[cols="1,2,1",options="header"]
+|===
+| Bucket | Inhalt | Schlüssel
+
+| `leagues` | Ligen (Name, Kurzname, Sortierung) | ULID
+| `teams` | Teams (Name, Bundesland, aktiv) | ULID
+| `venues` | Spielorte (Ort, Kurzname, Stadion, Lat/Lon) | ULID
+| `positions` | Schiedsrichter-Positionen (Kürzel, Langname, Sortierung) | Positions-String
+| `games` | Spiele (denormalisiert, mit eingebetteten Refs) | ULID
+|===
+
+[NOTE]
+====
+Die meisten Entitäten nutzen *ULIDs* als Schlüssel – zeitlich sortierbar (via
+`oklog/ulid`), sodass sich Datensätze ohne extra Sortierfeld chronologisch ordnen
+lassen. Nur `positions` weicht ab: Hier ist der Positions-String selbst der Key,
+weil Positionen selten und wohldefiniert sind.
+====
+
+== Eingebettete Referenzen
+
+Ein Spiel referenziert Stammdaten nicht per Fremdschlüssel, sondern bettet eine
+Kopie der relevanten Felder ein. Details und das Klassendiagramm dazu stehen auf
+der xref:architektur.adoc#_datenmodell_bewusst_denormalisiert[Architektur-Seite].
+
+.Kurz gesagt
+[sidebar]
+****
+Beim Schreiben werden die Refs aus den Stammdaten aufgelöst und in das
+Spiel-Dokument kopiert. Beim Lesen ist ein Spiel damit in sich vollständig –
+kein Join, keine Nachschlage-Logik.
+****
+
+== Export & Import
+
+[cols="1,3",options="header"]
+|===
+| Format | Verhalten
+
+| *JSON* | Voller Export/Import der *gesamten* Datenbank (alle Buckets auf einmal). Ein Import ersetzt alle Daten.
+| *CSV* | Import je Entität mit deutschen Spaltenüberschriften; Team-/Liganamen werden automatisch auf IDs aufgelöst. Semikolon-getrennt, UTF-8 mit BOM (Excel-kompatibel).
+|===
+
+[TIP]
+====
+Für ein Backup genügt die Dateikopie der `.db` – oder der JSON-Export auf der
+Datenverwaltungs-Seite (`/data`). Immer die *gesamte* DB sichern, nie einzelne Buckets.
+====
+
+== Keine Migrationen
+
+[IMPORTANT]
+====
+Schema-Änderungen brauchen kein Migrationsskript: Struct anpassen → fertig.
+Unbekannte JSON-Felder werden beim Lesen ignoriert, neue Felder sind schlicht leer,
+bis sie befüllt werden.
+====
+
+== Weiter
+
+* xref:architektur.adoc[Architektur & Request-Flow]
+* xref:index.adoc[Zurück zur Übersicht]

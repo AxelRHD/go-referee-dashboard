@@ -1,0 +1,125 @@
+= Architektur
+:navtitle: Architektur
+:description: Wie das Referee Dashboard intern aufgebaut ist – vom Request bis zur Datenbank.
+
+Wie ist das Referee Dashboard aufgebaut? Diese Seite zeigt den Weg eines Requests,
+die Schichten dahinter und warum das Datenmodell bewusst denormalisiert ist.
+
+== Der Weg eines Requests
+
+Jeder Aufruf läuft durch den chi-Router und seine Middleware zum passenden Handler.
+Der Handler liest/schreibt im eingebetteten bbolt-Store und rendert die Antwort
+serverseitig mit gomponents – fertiges HTML geht zurück an den Browser.
+
+[mermaid,request-flow,svg]
+....
+flowchart LR
+    B["Browser"] -->|"HTTP"| R["chi Router"]
+    R --> M["Middleware<br/>Logger · Recoverer<br/>StripSlashes · Setup-Redirect"]
+    M --> H["Handler<br/>(pro Modul)"]
+    H -->|"liest / schreibt"| S[("bbolt<br/>Key-Value-Store")]
+    H --> V["gomponents View"]
+    V -->|"server-gerendertes HTML"| B
+....
+
+[TIP]
+====
+*Kein Build-Step, kein npm, keine Templates.* Das HTML entsteht direkt in Go
+(gomponents). Es gibt keinen Frontend-Build und keine Template-Sprache – nur
+Go-Funktionen, die HTML zurückgeben. Interaktivität kommt über htmx und Alpine.js
+per CDN dazu.
+====
+
+== Die Schichten
+
+[cols="1,3",options="header"]
+|===
+| Schicht | Aufgabe
+
+| `server/` | chi-Router, Middleware, Registrierung aller Routen (Web + `/api`)
+| `handler/` | HTTP-Handler pro Modul (Games, Teams, Leagues, Venues, Dashboard, Data)
+| `view/` | gomponents-Views – erzeugen das HTML pro Modul
+| `store/` | bbolt-Datenzugriff: List/Get/Put/Delete je Entität, Export/Import, Seeding
+| `validation/` | serverseitige Formular-Validierung mit deutschen Fehlermeldungen
+|===
+
+Eine Besonderheit steckt in der Middleware: Solange die Datenbank leer ist, leitet
+ein *Setup-Redirect* jeden normalen Aufruf auf den Setup-Wizard um – statische
+Assets, `/api`, `/health` und `/setup` selbst sind davon ausgenommen.
+
+.Warum ist der `/static/*`-Handler so unscheinbar?
+[%collapsible]
+====
+Seit dem Embed-Refactoring werden CSS, JS und das App-Icon per `go:embed` ins
+Binary eingebettet und über `http.FileServerFS` ausgeliefert – nicht mehr vom
+Dateisystem. Dadurch ist das Docker-Image (`FROM scratch`) ein einzelnes Binary
+ohne separaten `static/`-Ordner. Eine schöne Zeile mit großer Wirkung fürs Deployment.
+====
+
+== Datenmodell: bewusst denormalisiert
+
+Stammdaten (Ligen, Teams, Spielorte, Positionen) liegen in eigenen Buckets. Ein
+*Spiel* referenziert sie aber nicht per Fremdschlüssel, sondern *bettet eine Kopie
+der relevanten Felder ein* (`TeamRef`, `VenueRef`, `LeagueRef`).
+
+[mermaid,datenmodell,svg]
+....
+classDiagram
+    class Game {
+      string ID
+      string GameDate
+      float RefereeFee
+      float TravelCosts
+      int KmDriven
+    }
+    class TeamRef {
+      string ID
+      string Name
+    }
+    class VenueRef {
+      string ID
+      string City
+      float Lat
+      float Lon
+    }
+    class LeagueRef {
+      string ID
+      string Name
+      string ShortName
+    }
+    Game *-- TeamRef : home_team / away_team
+    Game *-- VenueRef : venue
+    Game *-- LeagueRef : league
+....
+
+[NOTE]
+====
+Beim Anlegen/Bearbeiten eines Spiels werden die Refs aus den Stammdaten aufgelöst
+und eingebettet. Beim *Lesen* ist dann kein Join nötig – ein Spiel-Dokument ist
+in sich vollständig.
+====
+
+.Vor- und Nachteile der Denormalisierung
+[%collapsible]
+====
+*Vorteil:* Lesen ohne Joins – ein Spiel-Dokument ist eine vollständige Ansicht,
+perfekt für einen Key-Value-Store wie bbolt.
+
+*Preis:* Ändert sich ein Stammdatum, bleiben alte Spiele auf dem damaligen Stand –
+eine bewusste Design-Entscheidung, keine automatische Konsistenz.
+
+Für ein Schiedsrichter-Dashboard ist genau das gewünscht: Ein Spiel dokumentiert,
+*wie es damals war* – der Ligname von 2021 soll sich nicht rückwirkend ändern.
+====
+
+[IMPORTANT]
+====
+*Keine Migrationen.* Schema-Änderungen passieren durch Anpassen der Go-Structs.
+Unbekannte JSON-Felder werden beim Lesen ignoriert, neue Felder sind schlicht leer.
+Backup = Dateikopie der `.db` oder JSON-Export auf der Datenverwaltungs-Seite.
+====
+
+== Weiter
+
+* xref:datenmodell.adoc[Datenmodell im Detail] – Buckets, ULIDs, Export/Import
+* xref:index.adoc[Zurück zur Übersicht]

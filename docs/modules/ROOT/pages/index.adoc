@@ -1,0 +1,95 @@
+= Referee Dashboard
+:navtitle: Referee Dashboard
+
+Self-hosted Dashboard zur Verwaltung von American-Football-Schiedsrichter-Einsätzen,
+Gebühren und Statistiken.
+
+image::screenshot-dashboard.png[Dashboard – Jahresansicht]
+
+== Überblick
+
+Eine schlanke, selbst-gehostete Go-Webanwendung. Das HTML wird serverseitig mit
+https://maragu.dev/gomponents[gomponents] erzeugt – *kein npm, kein Build-Step,
+keine Templates*. Die Daten liegen in einer eingebetteten
+https://github.com/etcd-io/bbolt[bbolt]-Datei (ein Key-Value-Store, JSON-Dokumente);
+es gibt keine Migrationen, Schema-Änderungen passieren über die Go-Structs.
+
+== Features
+
+* *Spielverwaltung* – Spiele mit Datum, Teams, Spielort, Liga, Position, Gebühren und Fahrtkosten
+* *Team- & Ligaverwaltung* – Teams (mit Bundesland) und Ligen inkl. Sortierung
+* *Spielort-Verwaltung* – Orte mit Kurznamen und Photon-Geocoding (komoot)
+* *Dashboard* – interaktive ECharts-Visualisierungen: Jahres- und Mehrjahresübersicht,
+  Kalender-Heatmap, Geo-Karte, ThemeRiver, Bump-Charts
+* *Import / Export* – vollständiger JSON-Export/-Import der Datenbank, CSV-Export je Entität
+* *Setup-Wizard* – Erststart-Seite mit Seed-Daten-Import, JSON-Restore oder leerer Datenbank
+* *Positions-Verwaltung* – Inline-CRUD für Schiedsrichter-Positionen
+* *Formular-Validierung* – serverseitig mit Inline-Fehlermeldungen (Deutsch)
+* *Dark / Light Mode* – Nord-Theme mit persistentem Umschalter (localStorage)
+* *Healthcheck* – `/health`-Endpoint + CLI-Health-Command fürs Docker-Monitoring
+
+== Tech-Stack
+
+[cols="1,3",options="header"]
+|===
+| Ebene | Technologie
+
+| Backend | Go 1.26, chi v5
+| Frontend | gomponents (HTML-Generierung), Bootstrap 5.3, Bootstrap Icons
+| Charts | Apache ECharts 5 (Geo-Karte, Bar, Line, Pie, Heatmap, Treemap, ThemeRiver)
+| Interaktivität | htmx, Alpine.js
+| Datenbank | bbolt (eingebetteter Key-Value-Store, JSON-Dokumente)
+| IDs | ULIDs (zeit-sortierbar, via oklog/ulid)
+| Konfiguration | envconfig + godotenv
+| CLI | urfave/cli v3
+| Deployment | Docker (FROM scratch), gosctl, just
+| Theme | Nord-Farbpalette (dark + light)
+|===
+
+[TIP]
+====
+*Kein npm, kein Build-Step, keine Templates* – das HTML entsteht serverseitig,
+Assets werden per CDN geladen. Das Docker-Image ist ein einzelnes statisches
+Binary + Assets (~15 MB).
+====
+
+== Screenshots
+
+.Mehrjahresübersicht
+image::screenshot-overview.png[Mehrjahresübersicht]
+
+.Spiele-Liste
+image::screenshot-games.png[Spiele-Liste]
+
+.Spiel-Formular (mit Validierung)
+image::screenshot-form-validation.png[Spiel-Formular]
+
+.Datenverwaltung
+image::screenshot-data.png[Datenverwaltung]
+
+== Quick Start
+
+Keine Go-Installation nötig: das Binary für die eigene Plattform von der
+https://github.com/AxelRHD/go-referee-dashboard/releases[Releases]-Seite laden und starten:
+
+[source,bash]
+----
+./referee-dashboard
+----
+
+Die App läuft auf http://localhost:3000. Beim ersten Start führt der Setup-Wizard
+durch den Import der Seed-Daten. Verfügbar für Linux, macOS und Windows (je amd64 und arm64).
+
+== Deployment
+
+Für Self-Hosting gebaut, z. B. auf einem OpenMediaVault-Server mit Docker. Das
+Image ist ein einzelnes statisches Binary (`FROM scratch`), die Datenbank
+persistiert als einzelne bbolt-Datei im Daten-Volume. Deployment und Version-Tagging
+laufen über `just`-Rezepte; die Version wird aus dem Git-Tag abgeleitet und in der
+Navbar angezeigt.
+
+== Links
+
+* Repository: https://github.com/AxelRHD/go-referee-dashboard[github.com/AxelRHD/go-referee-dashboard]
+* Releases: https://github.com/AxelRHD/go-referee-dashboard/releases[Download-Binaries]
+* Lizenz: MIT

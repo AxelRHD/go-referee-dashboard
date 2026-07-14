@@ -85,3 +85,15 @@ Keine Migrationen nötig. Struct anpassen → fertig. Unbekannte JSON-Felder wer
 ## Python-Referenz
 
 Originalprojekt: `~/python-projects/referee-dashboard/src/referee_dashboard/`
+
+## Dokumentation (Antora)
+
+`docs/` ist eine **Antora-Doku-Komponente** (`docs/antora.yml` + `docs/modules/ROOT/`),
+die NICHT in diesem Repo gebaut wird. Sie wird von der zentralen Übersichts-Site
+**„Hobby Projekte"** aggregiert und dort gebaut:
+`~/antora-documentation/hobby-projects` (Playbook + `mise run build` / `mise run dev`).
+
+- Antora publiziert nur Dateien unter `docs/modules/ROOT/pages/`. Screenshots liegen
+  in `docs/modules/ROOT/images/` — dieselben Bilder referenziert auch das README.
+- Änderungen an der Projektdoku laufen üblicherweise über die Session im
+  hobby-projects-Repo (dort liegen die Antora-Konventionen). Hier nichts „bauen".

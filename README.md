@@ -26,19 +26,19 @@
 ## Screenshots
 
 ### Dashboard (Year View)
-![Dashboard](docs/screenshot-dashboard.png)
+![Dashboard](docs/modules/ROOT/images/screenshot-dashboard.png)
 
 ### Multi-Year Overview
-![Overview](docs/screenshot-overview.png)
+![Overview](docs/modules/ROOT/images/screenshot-overview.png)
 
 ### Games List
-![Games](docs/screenshot-games.png)
+![Games](docs/modules/ROOT/images/screenshot-games.png)
 
 ### Game Form
-![Form](docs/screenshot-form-validation.png)
+![Form](docs/modules/ROOT/images/screenshot-form-validation.png)
 
 ### Data Management
-![Data Management](docs/screenshot-data.png)
+![Data Management](docs/modules/ROOT/images/screenshot-data.png)
 
 ## Tech Stack
 

@@ -1,0 +1,5 @@
+name: referee-dashboard
+title: Referee Dashboard
+version: ~
+nav:
+  - modules/ROOT/nav.adoc

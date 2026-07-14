@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Docker-Image bauen (nutzt lokales Binary)"
+#MISE depends=["build"]
+set -euo pipefail
+docker build -t "$APP_NAME" .

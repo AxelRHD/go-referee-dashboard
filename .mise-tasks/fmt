@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+#MISE description="Code formatieren"
+set -euo pipefail
+go fmt ./...

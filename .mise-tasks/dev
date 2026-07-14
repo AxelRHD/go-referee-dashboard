@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+#MISE description="Dev-Server mit Hot-Reload starten (air)"
+set -euo pipefail
+air

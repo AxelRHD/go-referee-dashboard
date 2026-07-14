@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+#MISE description="Container-Logs anzeigen"
+set -euo pipefail
+gosctl run logs

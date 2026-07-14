@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+#MISE description="Static Analysis"
+set -euo pipefail
+go vet ./...

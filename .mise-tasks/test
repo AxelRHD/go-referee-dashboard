@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+#MISE description="Tests ausfuehren"
+set -euo pipefail
+go test -v ./...

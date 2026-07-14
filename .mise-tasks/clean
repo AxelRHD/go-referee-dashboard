@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+#MISE description="Build-Artefakte entfernen"
+set -euo pipefail
+rm -rf "$BIN_DIR"

@@ -52,7 +52,7 @@
 | IDs | ULIDs (time-sortable, via oklog/ulid) |
 | Config | envconfig + godotenv |
 | CLI | urfave/cli v3 |
-| Deployment | Docker (FROM scratch), gosctl, just |
+| Deployment | Docker (FROM scratch), gosctl, mise |
 | Theme | Nord color palette (dark + light) |
 
 **No npm, no build step, no templates** — HTML is generated server-side with [gomponents](https://maragu.dev/gomponents), assets loaded via CDN.
@@ -73,9 +73,8 @@ Available platforms: Linux, macOS, Windows — each for amd64 and arm64.
 
 ### Prerequisites
 
-- [Go 1.26+](https://go.dev/)
-- [just](https://just.systems/) — command runner
-- [air](https://github.com/air-verse/air) — hot-reload dev server (optional)
+- [mise](https://mise.jdx.dev/) — toolchain + task runner (provides Go 1.26+)
+- [air](https://github.com/air-verse/air) — hot-reload dev server (for `mise run dev`)
 
 ### Getting Started
 
@@ -84,8 +83,11 @@ Available platforms: Linux, macOS, Windows — each for amd64 and arm64.
 git clone git@github.com:AxelRHD/go-referee-dashboard.git
 cd go-referee-dashboard
 
+# Install the pinned toolchain (Go)
+mise install
+
 # Start development server (with hot-reload)
-just dev
+mise run dev
 
 # Or without air
 go run ./cmd serve
@@ -110,36 +112,36 @@ Configuration via `.env` file in the project root:
 | `DB_PATH` | `referee.db` | Path to bbolt database file |
 | `PORT` | `3000` | Server port |
 
-## Just Recipes
+## Mise Tasks
 
 ```
-just --list
+mise tasks
 ```
 
 ### Development
 
-| Recipe | Description |
-|--------|-------------|
-| `just dev` | Start dev server with hot-reload (air) |
-| `just fmt` | Format code |
-| `just vet` | Static analysis |
-| `just test` | Run tests |
+| Task | Description |
+|------|-------------|
+| `mise run dev` | Start dev server with hot-reload (air) |
+| `mise run fmt` | Format code |
+| `mise run vet` | Static analysis |
+| `mise run test` | Run tests |
 
 ### Build
 
-| Recipe | Description |
-|--------|-------------|
-| `just build` | Build static binary with git version |
+| Task | Description |
+|------|-------------|
+| `mise run build` | Build static binary with git version |
+| `mise run build:image` | Build Docker image (uses local binary) |
 
 ### Deployment
 
-| Recipe | Description |
-|--------|-------------|
-| `just deploy` | Full deploy: build + push image |
-| `just build-image` | Build Docker image (uses local binary) |
-| `just deploy-image` | Push image to server + prune old images |
-| `just deploy-logs` | Show container logs |
-| `just deploy-status` | Show container status |
+| Task | Description |
+|------|-------------|
+| `mise run deploy` | Full deploy: build + push image |
+| `mise run deploy:image` | Push image to server + prune old images |
+| `mise run deploy:logs` | Show container logs |
+| `mise run deploy:status` | Show container status |
 
 ## Deployment
 
@@ -150,9 +152,10 @@ The app is designed for self-hosting, e.g. on an OpenMediaVault (OMV) server wit
 ```
 Local (VM)                           Server (e.g. OMV)
 ┌──────────────┐                     ┌──────────────────────────┐
-│ just build   │                     │                          │
-│ just deploy  │──docker save/load──▶│ Docker image (scratch)   │
-│              │                     │   Binary + static assets │
+│ mise run     │                     │                          │
+│   build      │                     │                          │
+│ mise run     │──docker save/load──▶│ Docker image (scratch)   │
+│   deploy     │                     │   Binary + static assets │
 │              │                     │                          │
 │              │                     │ appdata/                 │
 │              │                     │   └── referee.db (bbolt) │
@@ -194,7 +197,7 @@ The app displays its version in the navbar, derived from git tags:
 
 ```bash
 git tag v0.4.0
-just deploy
+mise run deploy
 ```
 
 - Tagged commit → `v0.4.0`

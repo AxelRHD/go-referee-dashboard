@@ -1,0 +1,16 @@
+# Referee-Dashboard — projektlokale Toolchain.
+# Nach `mise install` ist jeder Klon korrekt konfiguriert; `mise tasks` listet
+# die verfuegbaren Aufgaben (Skripte in .mise-tasks/).
+
+[tools]
+# go.mod verlangt >=1.26.1; hier auf die aktuell installierte Toolchain gepinnt.
+# air (Hot-Reload) ist global verfuegbar und wird bewusst NICHT projektlokal gepinnt.
+go = "1.26.4"
+
+[env]
+APP_NAME = "referee-dashboard"
+BIN_DIR = "bin"
+REMOTE = "mimir"          # Deploy-Zielhost
+
+[settings.status]
+show_tools = true

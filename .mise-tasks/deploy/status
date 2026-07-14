@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+#MISE description="Container-Status anzeigen"
+set -euo pipefail
+gosctl run status

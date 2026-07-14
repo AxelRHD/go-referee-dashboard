@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Image auf Server pushen und alte Images aufraeumen"
+set -euo pipefail
+docker save "$APP_NAME" | ssh "$REMOTE" docker load
+ssh "$REMOTE" docker image prune -f

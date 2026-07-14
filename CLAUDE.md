@@ -38,13 +38,22 @@ static/              CSS, Icons
 
 ## Commands
 
+Task-Runner ist **mise** (Tasks als Skripte in `.mise-tasks/`, `mise tasks` listet alle).
+
 ```sh
-just dev          # Dev-Server starten
-just build        # Binary bauen (mit Git-Version)
-just fmt          # Code formatieren
-just vet          # Static Analysis
-just test         # Tests ausführen
+mise run dev       # Dev-Server starten (air, Hot-Reload)
+mise run build     # Binary bauen (mit Git-Version)
+mise run fmt       # Code formatieren
+mise run vet       # Static Analysis
+mise run test      # Tests ausführen
+mise run deploy    # Full deploy (build:image + deploy:image)
 ```
+
+Gruppierte Tasks über Unterordner in `.mise-tasks/`: `build:image`, `deploy:image`,
+`deploy:logs`, `deploy:status`. Der bloße `build`/`deploy`-Task liegt als
+`build.sh`/`deploy.sh` (mise strippt die `.sh`-Endung), damit er neben dem
+gleichnamigen Gruppen-Ordner existieren kann. Toolchain (Go) wird in `mise.toml`
+unter `[tools]` gepinnt.
 
 ## Datenmodell
 

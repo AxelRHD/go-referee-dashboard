@@ -127,5 +127,5 @@ siehe xref:datenmodell.adoc#_export_import[Datenmodell].
 
 == Weiter
 
-* xref:entwicklung.adoc[Entwicklung]
-* xref:index.adoc[Zurück zur Übersicht]
+* *Weiter:* xref:screenshots.adoc[Screenshots] – alle Ansichten
+* xref:index.adoc[← Übersicht]

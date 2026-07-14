@@ -175,5 +175,5 @@ Backup = Dateikopie der `.db` oder JSON-Export auf der Datenverwaltungs-Seite.
 
 == Weiter
 
-* xref:datenmodell.adoc[Datenmodell im Detail] – Buckets, ULIDs, Export/Import
-* xref:index.adoc[Zurück zur Übersicht]
+* *Weiter:* xref:datenmodell.adoc[Datenmodell] – Buckets, ULIDs, Export/Import
+* xref:index.adoc[← Übersicht]

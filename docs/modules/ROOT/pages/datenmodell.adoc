@@ -68,5 +68,5 @@ bis sie befüllt werden.
 
 == Weiter
 
-* xref:architektur.adoc[Architektur & Request-Flow]
-* xref:index.adoc[Zurück zur Übersicht]
+* *Weiter:* xref:entwicklung.adoc[Entwicklung] – Setup, `mise`-Tasks, Dev-Loop
+* xref:index.adoc[← Übersicht]

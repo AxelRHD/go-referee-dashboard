@@ -90,6 +90,5 @@ die eigentliche Ersteinrichtung der *Daten* passiert im Setup-Wizard beim ersten
 
 == Weiter
 
-* xref:architektur.adoc[Architektur & Request-Flow]
-* xref:deployment.adoc[Deployment]
-* xref:index.adoc[Zurück zur Übersicht]
+* *Weiter:* xref:deployment.adoc[Deployment] – Docker, Compose, Self-Hosting
+* xref:index.adoc[← Übersicht]

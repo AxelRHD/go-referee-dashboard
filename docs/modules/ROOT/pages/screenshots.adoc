@@ -1,0 +1,23 @@
+= Screenshots
+:navtitle: Screenshots
+
+Screenshots des Referee Dashboards. Finanzdaten sind automatisch unkenntlich gemacht.
+
+.Dashboard – Jahresansicht
+image::screenshot-dashboard.png[Dashboard – Jahresansicht]
+
+.Mehrjahresübersicht
+image::screenshot-overview.png[Mehrjahresübersicht]
+
+.Spiele-Liste
+image::screenshot-games.png[Spiele-Liste]
+
+.Spiel-Formular (mit Validierung)
+image::screenshot-form-validation.png[Spiel-Formular]
+
+.Datenverwaltung
+image::screenshot-data.png[Datenverwaltung]
+
+'''
+
+xref:index.adoc[← Zurück zur Übersicht]

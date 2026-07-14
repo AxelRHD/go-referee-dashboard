@@ -6,6 +6,8 @@ Gebühren und Statistiken.
 
 image::screenshot-dashboard.png[Dashboard – Jahresansicht]
 
+→ xref:screenshots.adoc[Alle Screenshots ansehen]
+
 == Überblick
 
 Eine schlanke, selbst-gehostete Go-Webanwendung. Das HTML wird serverseitig mit
@@ -52,20 +54,6 @@ es gibt keine Migrationen, Schema-Änderungen passieren über die Go-Structs.
 Assets werden per CDN geladen. Das Docker-Image ist ein einzelnes statisches
 Binary + Assets (~15 MB).
 ====
-
-== Screenshots
-
-.Mehrjahresübersicht
-image::screenshot-overview.png[Mehrjahresübersicht]
-
-.Spiele-Liste
-image::screenshot-games.png[Spiele-Liste]
-
-.Spiel-Formular (mit Validierung)
-image::screenshot-form-validation.png[Spiel-Formular]
-
-.Datenverwaltung
-image::screenshot-data.png[Datenverwaltung]
 
 == Quick Start
 

@@ -1,3 +1,5 @@
 * xref:architektur.adoc[Architektur]
 * xref:datenmodell.adoc[Datenmodell]
+* xref:entwicklung.adoc[Entwicklung]
+* xref:deployment.adoc[Deployment]
 * xref:screenshots.adoc[Screenshots]

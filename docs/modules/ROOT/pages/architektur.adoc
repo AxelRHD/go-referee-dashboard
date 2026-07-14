@@ -11,15 +11,50 @@ Jeder Aufruf läuft durch den chi-Router und seine Middleware zum passenden Hand
 Der Handler liest/schreibt im eingebetteten bbolt-Store und rendert die Antwort
 serverseitig mit gomponents – fertiges HTML geht zurück an den Browser.
 
-[mermaid,request-flow,svg]
+[plantuml,request-flow,svg]
 ....
-flowchart LR
-    B["Browser"] -->|"HTTP"| R["chi Router"]
-    R --> M["Middleware<br/>Logger · Recoverer<br/>StripSlashes · Setup-Redirect"]
-    M --> H["Handler<br/>(pro Modul)"]
-    H -->|"liest / schreibt"| S[("bbolt<br/>Key-Value-Store")]
-    H --> V["gomponents View"]
-    V -->|"server-gerendertes HTML"| B
+@startuml
+skinparam backgroundColor transparent
+skinparam shadowing false
+skinparam defaultFontName sans-serif
+left to right direction
+skinparam rectangle {
+  BackgroundColor #ECEFF4
+  BorderColor #5E81AC
+  FontColor #2E3440
+  RoundCorner 8
+}
+skinparam database {
+  BackgroundColor #E5E9F0
+  BorderColor #5E81AC
+  FontColor #2E3440
+}
+skinparam ArrowColor #4C566A
+skinparam ArrowFontColor #4C566A
+
+rectangle "Browser" as B #88C0D0
+rectangle "chi Router" as R #81A1C1
+rectangle "Middleware\nLogger · Recoverer\nStripSlashes · Setup-Redirect" as M #81A1C1
+rectangle "Handler\n(pro Modul)" as H #A3BE8C
+rectangle "gomponents View" as V #EBCB8B
+database "bbolt\nKey-Value-Store" as S #B48EAD
+
+B --> R : HTTP
+R --> M
+M --> H
+H --> S : liest / schreibt
+H --> V
+V --> B : server-gerendertes HTML
+
+legend right
+Farbe = Rolle
+|<#88C0D0>| Client (Browser) |
+|<#81A1C1>| HTTP-Schicht (Router, Middleware) |
+|<#A3BE8C>| Logik (Handler) |
+|<#EBCB8B>| Rendering (View) |
+|<#B48EAD>| Daten (bbolt Store) |
+endlegend
+@enduml
 ....
 
 [TIP]
@@ -62,34 +97,53 @@ Stammdaten (Ligen, Teams, Spielorte, Positionen) liegen in eigenen Buckets. Ein
 *Spiel* referenziert sie aber nicht per Fremdschlüssel, sondern *bettet eine Kopie
 der relevanten Felder ein* (`TeamRef`, `VenueRef`, `LeagueRef`).
 
-[mermaid,datenmodell,svg]
+[plantuml,datenmodell,svg]
 ....
-classDiagram
-    class Game {
-      string ID
-      string GameDate
-      float RefereeFee
-      float TravelCosts
-      int KmDriven
-    }
-    class TeamRef {
-      string ID
-      string Name
-    }
-    class VenueRef {
-      string ID
-      string City
-      float Lat
-      float Lon
-    }
-    class LeagueRef {
-      string ID
-      string Name
-      string ShortName
-    }
-    Game *-- TeamRef : home_team / away_team
-    Game *-- VenueRef : venue
-    Game *-- LeagueRef : league
+@startuml
+skinparam backgroundColor transparent
+skinparam shadowing false
+skinparam defaultFontName sans-serif
+hide circle
+skinparam class {
+  BackgroundColor #ECEFF4
+  BorderColor #5E81AC
+  FontColor #2E3440
+  AttributeFontColor #2E3440
+  ArrowColor #4C566A
+  ArrowFontColor #4C566A
+}
+class Game #88C0D0 {
+  string ID
+  string GameDate
+  float RefereeFee
+  float TravelCosts
+  int KmDriven
+}
+class TeamRef #A3BE8C {
+  string ID
+  string Name
+}
+class VenueRef #EBCB8B {
+  string ID
+  string City
+  float Lat
+  float Lon
+}
+class LeagueRef #B48EAD {
+  string ID
+  string Name
+  string ShortName
+}
+Game *-- TeamRef : home_team / away_team
+Game *-- VenueRef : venue
+Game *-- LeagueRef : league
+
+legend right
+Farbe = Rolle im Modell
+|<#88C0D0>| Aggregat (Game) |
+|<#A3BE8C>| eingebettete Referenz |
+endlegend
+@enduml
 ....
 
 [NOTE]

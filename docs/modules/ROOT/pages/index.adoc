@@ -1,5 +1,6 @@
 = Referee Dashboard
 :navtitle: Referee Dashboard
+:description: Self-hosted Dashboard für American-Football-Schiedsrichter-Einsätze, Gebühren und Statistiken.
 
 Self-hosted Dashboard zur Verwaltung von American-Football-Schiedsrichter-Einsätzen,
 Gebühren und Statistiken.
@@ -44,7 +45,7 @@ es gibt keine Migrationen, Schema-Änderungen passieren über die Go-Structs.
 | IDs | ULIDs (zeit-sortierbar, via oklog/ulid)
 | Konfiguration | envconfig + godotenv
 | CLI | urfave/cli v3
-| Deployment | Docker (FROM scratch), gosctl, just
+| Deployment | Docker (FROM scratch), mise
 | Theme | Nord-Farbpalette (dark + light)
 |===
 
@@ -55,7 +56,7 @@ Assets werden per CDN geladen. Das Docker-Image ist ein einzelnes statisches
 Binary + Assets (~15 MB).
 ====
 
-== Quick Start
+== Schnellstart
 
 Keine Go-Installation nötig: das Binary für die eigene Plattform von der
 https://github.com/AxelRHD/go-referee-dashboard/releases[Releases]-Seite laden und starten:
@@ -68,13 +69,13 @@ https://github.com/AxelRHD/go-referee-dashboard/releases[Releases]-Seite laden u
 Die App läuft auf http://localhost:3000. Beim ersten Start führt der Setup-Wizard
 durch den Import der Seed-Daten. Verfügbar für Linux, macOS und Windows (je amd64 und arm64).
 
-== Deployment
+== Mehr erfahren
 
-Für Self-Hosting gebaut, z. B. auf einem OpenMediaVault-Server mit Docker. Das
-Image ist ein einzelnes statisches Binary (`FROM scratch`), die Datenbank
-persistiert als einzelne bbolt-Datei im Daten-Volume. Deployment und Version-Tagging
-laufen über `just`-Rezepte; die Version wird aus dem Git-Tag abgeleitet und in der
-Navbar angezeigt.
+* xref:architektur.adoc[Architektur] – Request-Flow, Schichten und das denormalisierte Datenmodell
+* xref:datenmodell.adoc[Datenmodell] – Buckets, ULIDs, Export/Import
+* xref:entwicklung.adoc[Entwicklung] – Setup, `mise`-Tasks, Dev-Loop
+* xref:deployment.adoc[Deployment] – Docker, Compose, Self-Hosting
+* xref:screenshots.adoc[Screenshots] – alle Ansichten
 
 == Links
 

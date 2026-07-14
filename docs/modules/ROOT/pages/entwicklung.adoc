@@ -1,0 +1,95 @@
+= Entwicklung
+:navtitle: Entwicklung
+:description: Lokales Setup, mise-Tasks, Dev-Loop und Konfiguration.
+
+So läuft das Referee Dashboard lokal – Setup, Hot-Reload-Dev-Loop und die
+verfügbaren `mise`-Tasks.
+
+== Voraussetzungen
+
+[cols="1,2",options="header"]
+|===
+| Werkzeug | Zweck
+
+| https://go.dev/[Go] (siehe `go.mod`, aktuell 1.26.x) | Compiler & Toolchain
+| https://mise.jdx.dev/[mise] | Toolchain- und Task-Runner (löst `just` ab)
+| https://github.com/air-verse/air[air] | Hot-Reload-Dev-Server (global installiert)
+|===
+
+[TIP]
+====
+`mise` pinnt die Go-Version projektlokal (`mise.toml`). Nach dem Klonen genügt
+`mise install`, und jeder Rechner hat exakt die richtige Toolchain. `air` wird
+bewusst *nicht* projektlokal gepinnt, sondern global bereitgestellt.
+====
+
+== Loslegen
+
+[source,bash]
+----
+git clone git@github.com:AxelRHD/go-referee-dashboard.git
+cd go-referee-dashboard
+
+mise install        # Go-Toolchain gemäß mise.toml
+mise run dev        # Dev-Server mit Hot-Reload (air)
+----
+
+Die App läuft auf http://localhost:3000. Beim ersten Start mit leerer Datenbank
+leitet die App auf `/setup` um – dort wählst du Seed-Daten, JSON-Restore oder
+eine leere Datenbank.
+
+== mise-Tasks
+
+Alle Aufgaben liegen als Datei-Tasks unter `.mise-tasks/`; `mise tasks` listet sie.
+
+.Entwicklung
+[cols="1,2",options="header"]
+|===
+| Task | Beschreibung
+
+| `mise run dev` | Dev-Server mit Hot-Reload (air)
+| `mise run fmt` | Code formatieren (`go fmt ./...`)
+| `mise run vet` | Static Analysis (`go vet ./...`)
+| `mise run test` | Tests ausführen (`go test -v ./...`)
+|===
+
+.Build & Deployment
+[cols="1,2",options="header"]
+|===
+| Task | Beschreibung
+
+| `mise run build` | Statisches Binary bauen (mit Git-Version via `-ldflags`)
+| `mise run clean` | Build-Artefakte entfernen
+| `mise run build:image` | Docker-Image bauen (nutzt lokales Binary)
+| `mise run deploy` | Full deploy: Image bauen + pushen
+| `mise run deploy:image` | Image auf Server pushen, alte Images aufräumen
+| `mise run deploy:logs` | Container-Logs anzeigen
+| `mise run deploy:status` | Container-Status anzeigen
+|===
+
+Details zum Deploy stehen auf der xref:deployment.adoc[Deployment-Seite].
+
+== Konfiguration
+
+Konfiguriert wird über Umgebungsvariablen bzw. eine `.env`-Datei im Projekt-Root
+(`envconfig` + `godotenv`):
+
+[cols="1,1,2",options="header"]
+|===
+| Variable | Default | Bedeutung
+
+| `DB_PATH` | `referee.db` | Pfad zur bbolt-Datenbankdatei
+| `PORT` | `3000` | Server-Port
+|===
+
+[NOTE]
+====
+Fehlt die `.env`, greifen die Defaults. Es gibt keinen Setup-Zwang über Dateien –
+die eigentliche Ersteinrichtung der *Daten* passiert im Setup-Wizard beim ersten Start.
+====
+
+== Weiter
+
+* xref:architektur.adoc[Architektur & Request-Flow]
+* xref:deployment.adoc[Deployment]
+* xref:index.adoc[Zurück zur Übersicht]

@@ -1,0 +1,131 @@
+= Deployment
+:navtitle: Deployment
+:description: Self-Hosting per Docker – vom lokalen Build bis zum Server.
+
+Das Referee Dashboard ist für Self-Hosting gebaut, z. B. auf einem
+OpenMediaVault-Server (OMV) mit Docker. Das Image ist ein einzelnes statisches
+Binary (`FROM scratch`, ~15 MB) – kein Betriebssystem, keine Runtime.
+
+== Der Weg auf den Server
+
+[plantuml,deployment,svg]
+....
+@startuml
+skinparam backgroundColor transparent
+skinparam shadowing false
+skinparam defaultFontName sans-serif
+skinparam node {
+  BorderColor #5E81AC
+  FontColor #2E3440
+}
+skinparam artifact {
+  BorderColor #5E81AC
+  FontColor #2E3440
+}
+skinparam database {
+  BorderColor #5E81AC
+  FontColor #2E3440
+}
+skinparam ArrowColor #4C566A
+skinparam ArrowFontColor #4C566A
+
+node "Lokal (VM)" as local #ECEFF4 {
+  artifact "mise run build\nmise run deploy" as build #88C0D0
+}
+node "Server (OMV)" as server #ECEFF4 {
+  artifact "Docker-Image (scratch)\nBinary + Assets (~15 MB)" as image #A3BE8C
+  database "appdata/\nreferee.db (bbolt)" as db #B48EAD
+  image --> db : persistiert
+}
+build --> image : docker save / load
+
+legend right
+|<#88C0D0>| lokaler Build/Deploy |
+|<#A3BE8C>| Container-Image |
+|<#B48EAD>| persistente Daten |
+endlegend
+@enduml
+....
+
+== Das Image
+
+Das `Dockerfile` ist bewusst minimal:
+
+[cols="1,2",options="header"]
+|===
+| Zeile | Bedeutung
+
+| `FROM scratch` | Kein Basis-OS – nur das, was wir hineinlegen
+| `COPY bin/referee-dashboard /` | Das statische Go-Binary (CGO aus)
+| `USER 1000:1000` | Läuft als nicht-root
+| `EXPOSE 3000` | Server-Port
+|===
+
+[NOTE]
+====
+Die statischen Assets (CSS, JS, Icon) sind seit dem Embed-Refactoring per
+`go:embed` ins Binary eingebettet – siehe
+xref:architektur.adoc#_die_schichten[Architektur]. Das Image braucht sie also
+nicht mehr separat.
+====
+
+== Docker Compose
+
+[source,yaml]
+----
+services:
+  referee-dashboard:
+    image: referee-dashboard
+    container_name: referee-dashboard
+    restart: unless-stopped
+    ports:
+      - "3001:3000"                 # <1>
+    volumes:
+      - CHANGE_TO_COMPOSE_DATA_PATH/referee-dashboard:/data   # <2>
+    healthcheck:
+      test: ["CMD", "/referee-dashboard", "health"]           # <3>
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    environment:
+      - DB_PATH=/data/referee.db    # <4>
+      - PORT=3000
+----
+<1> Host-Port `3001` → Container-Port `3000`.
+<2> Daten-Volume: hier liegt die bbolt-Datei persistent.
+<3> Healthcheck nutzt den eingebauten CLI-Befehl `health` (kein `curl` im `scratch`-Image nötig).
+<4> DB in das gemountete Volume legen, damit sie den Container überlebt.
+
+== Version-Tagging
+
+Die App zeigt ihre Version in der Navbar – abgeleitet aus dem Git-Tag
+(`git describe`), eingebrannt beim Build via `-ldflags`.
+
+[source,bash]
+----
+git tag v0.4.0
+mise run deploy
+----
+
+* Getaggter Commit → `v0.4.0`
+* Commits danach → `v0.4.0-1-gabcdef`
+
+== Healthcheck
+
+Es gibt beides: einen HTTP-Endpoint `/health` (liefert `ok`) und einen
+CLI-Befehl `referee-dashboard health` fürs Docker-Monitoring – letzteren nutzt
+der Compose-Healthcheck oben.
+
+== Backup
+
+[TIP]
+====
+Zwei Wege: die `.db`-Datei aus dem Volume kopieren, oder den JSON-Export auf der
+Datenverwaltungs-Seite (`/data`) ziehen. Immer die *gesamte* Datenbank sichern –
+siehe xref:datenmodell.adoc#_export_import[Datenmodell].
+====
+
+== Weiter
+
+* xref:entwicklung.adoc[Entwicklung]
+* xref:index.adoc[Zurück zur Übersicht]
